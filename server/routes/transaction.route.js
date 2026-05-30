@@ -19,6 +19,6 @@ router.post("/deposit", createDeposit);
 router.post("/refund", createRefund);
 
 // Admin transactions bulk delete
-router.delete("/transactions", deleteTransactions);
+router.delete("/", deleteTransactions);
 
 export default router;

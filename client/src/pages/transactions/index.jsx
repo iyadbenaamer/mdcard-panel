@@ -240,7 +240,7 @@ const Transactions = () => {
               setIsDeleting(true);
               setError("");
               try {
-                await axiosClient.delete("/admin/transactions", {
+                await axiosClient.delete("/transactions", {
                   data: { ids: Array.from(selectedIds) },
                 });
                 closeDialog();

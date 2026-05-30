@@ -15,7 +15,7 @@ const DepositDialog = ({ userId, onBalanceUpdate, onClose }) => {
     }
 
     try {
-      const response = await axiosClient.post("/admin/deposit", {
+      const response = await axiosClient.post("/transactions/deposit", {
         userId,
         amount: Number(amount),
       });
