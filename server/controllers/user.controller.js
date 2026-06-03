@@ -6,7 +6,6 @@ import Setting from "../models/setting.model.js";
 
 import { generateCode } from "../utils/generateCode.js";
 import { handleError } from "../utils/errorHandler.js";
-import { sendCode } from "../services/sendCode.js";
 
 const MAX_CODE_ATTEMPTS = 20;
 const RESEND_FIRST_TWO_DELAY_MS = 60 * 1000;

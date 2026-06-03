@@ -13,7 +13,6 @@ import User from "../models/user.model.js";
 import { handleError } from "../utils/errorHandler.js";
 import { getEffectiveBuyPrice } from "../utils/priceCalculator.js";
 import parsePagination from "../utils/parsePagination.js";
-import generateRandomSerialNumber from "../utils/generateRandomSerialNumber.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

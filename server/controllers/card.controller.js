@@ -10,6 +10,7 @@ import { handleError } from "../utils/errorHandler.js";
 import parsePagination from "../utils/parsePagination.js";
 import crypto from "crypto";
 import { decryptCardCode, encryptCardCode } from "../utils/cardCodeCrypto.js";
+import generateRandomSerialNumber from "../utils/generateRandomSerialNumber.js";
 
 const isValidSerialNumber = (value) => /^\d{15}$/.test(value);
 
