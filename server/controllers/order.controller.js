@@ -82,7 +82,7 @@ export const getMany = async (req, res) => {
       if (!Types.ObjectId.isValid(userId)) {
         return res.status(400).json({ code: "ORDER_USER_INVALID" });
       }
-      filter.userId = userId;
+      filter.userId = new Types.ObjectId(userId);
     } else if (userQuery && userQuery.trim()) {
       const users = await User.find(buildUserSearchFilter(userQuery))
         .select("_id")
@@ -150,41 +150,128 @@ export const getMany = async (req, res) => {
     const resolvedSortField = sortFieldMap[sortBy];
     const resolvedSortOrder = sortOrder === "asc" ? 1 : -1;
 
-    let ordersQuery = Order.find(filter)
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .populate({ path: "userId", select: "name phone" });
-
+    const ordersPipeline = [];
     if (resolvedSortField) {
-      ordersQuery = ordersQuery.sort({
-        [resolvedSortField]: resolvedSortOrder,
-        _id: 1,
+      ordersPipeline.push({
+        $sort: {
+          [resolvedSortField]: resolvedSortOrder,
+          _id: 1,
+        },
       });
     }
 
-    const [orders, total] = await Promise.all([
-      ordersQuery,
-      Order.countDocuments(filter),
+    ordersPipeline.push(
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "users",
+          let: { lookupUserId: "$userId" },
+          as: "userDoc",
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$_id", "$$lookupUserId"],
+                },
+              },
+            },
+            { $project: { _id: 1, name: 1, phone: 1 } },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "card_tiers",
+          let: { lookupTierIds: "$items.tierId" },
+          as: "tiers",
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ["$_id", "$$lookupTierIds"],
+                },
+              },
+            },
+            { $project: { _id: 1, title: 1 } },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          items: {
+            $map: {
+              input: { $ifNull: ["$items", []] },
+              as: "item",
+              in: {
+                $let: {
+                  vars: {
+                    tier: {
+                      $first: {
+                        $filter: {
+                          input: "$tiers",
+                          as: "tier",
+                          cond: { $eq: ["$$tier._id", "$$item.tierId"] },
+                        },
+                      },
+                    },
+                    itemWithoutCards: {
+                      $arrayToObject: {
+                        $filter: {
+                          input: { $objectToArray: "$$item" },
+                          as: "itemField",
+                          cond: { $ne: ["$$itemField.k", "cards"] },
+                        },
+                      },
+                    },
+                  },
+                  in: {
+                    $mergeObjects: [
+                      "$$itemWithoutCards",
+                      {
+                        title: {
+                          $ifNull: ["$$tier.title", "$$item.title"],
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          user: {
+            $first: "$userDoc",
+          },
+        },
+      },
+      {
+        $addFields: {
+          userId: {
+            $ifNull: ["$user._id", "$userId"],
+          },
+        },
+      },
+      {
+        $project: {
+          userDoc: 0,
+          tiers: 0,
+        },
+      },
+    );
+
+    const [aggregationResult] = await Order.aggregate([
+      { $match: filter },
+      {
+        $facet: {
+          orders: ordersPipeline,
+          totalCount: [{ $count: "total" }],
+        },
+      },
     ]);
 
+    const payload = aggregationResult?.orders || [];
+    const total = aggregationResult?.totalCount?.[0]?.total || 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
-    const payload = orders.map((order) => {
-      const orderObj = order.toObject();
-      const user =
-        orderObj.userId && typeof orderObj.userId === "object"
-          ? orderObj.userId
-          : null;
-      const items = Array.isArray(orderObj.items)
-        ? orderObj.items.map(({ cards, ...rest }) => rest)
-        : [];
-
-      return {
-        ...orderObj,
-        items,
-        user,
-        userId: user?._id ?? orderObj.userId,
-      };
-    });
 
     return res.status(200).json({
       orders: payload,
