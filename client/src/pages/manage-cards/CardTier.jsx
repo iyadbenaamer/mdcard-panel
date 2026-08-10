@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import CustomInput from "components/CustomInput";
+import DateInput from "components/DateInput";
 import PrimaryBtn from "components/PrimaryBtn";
 import SubmitBtn from "components/SubmitBtn";
 import RedBtn from "components/RedBtn";
+import FilterBar from "components/FilterBar";
 import {
   Table,
   TableBody,
@@ -16,6 +18,35 @@ import axiosClient from "utils/AxiosClient";
 import { useDialog } from "components/dialog/DialogContext";
 import { useBreadcrumb } from "components/breadcrumb/BreadcrumbContext";
 import EyeIcon from "assets/icons/eye.svg?react";
+
+const CARD_TIER_INITIAL_FILTERS = {
+  serialNumber: "",
+  isSold: "",
+  startDate: "",
+  endDate: "",
+};
+
+const CARD_TIER_FILTER_FIELDS = [
+  {
+    key: "serialNumber",
+    type: "text",
+    label: "الرقم التسلسلي",
+    placeholder: "ابحث بالرقم التسلسلي",
+    colSpan: 2,
+  },
+  {
+    key: "isSold",
+    type: "select",
+    label: "الحالة",
+    options: [
+      { value: "", label: "الكل" },
+      { value: "false", label: "متاح" },
+      { value: "true", label: "مباع" },
+    ],
+  },
+  { key: "startDate", type: "date", label: "من تاريخ" },
+  { key: "endDate", type: "date", label: "إلى تاريخ" },
+];
 
 const CardTier = () => {
   const CARDS_PER_PAGE = 10;
@@ -37,6 +68,12 @@ const CardTier = () => {
   const [cardsPage, setCardsPage] = useState(1);
   const [visibleCodes, setVisibleCodes] = useState({});
   const [cardActionId, setCardActionId] = useState(null);
+  const [selectedCardIds, setSelectedCardIds] = useState(new Set());
+  const [isBulkDeletingCards, setIsBulkDeletingCards] = useState(false);
+  const [cardFilters, setCardFilters] = useState(CARD_TIER_INITIAL_FILTERS);
+  const [draftCardFilters, setDraftCardFilters] = useState(
+    CARD_TIER_INITIAL_FILTERS,
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -55,7 +92,49 @@ const CardTier = () => {
     { key: "field", label: "الحقل", width: "220px" },
     { key: "value", label: "القيمة" },
   ];
+  const cardIdsOnPage = cards.map((card) => card._id).filter(Boolean);
+  const isAllCardsSelected =
+    cardIdsOnPage.length > 0 &&
+    cardIdsOnPage.every((id) => selectedCardIds.has(id));
+
+  const toggleSelectAllCards = () => {
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      if (isAllCardsSelected) {
+        cardIdsOnPage.forEach((id) => next.delete(id));
+      } else {
+        cardIdsOnPage.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectOneCard = (cardId) => {
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  };
+
   const cardsTableColumns = [
+    {
+      key: "select",
+      label: (
+        <input
+          type="checkbox"
+          checked={isAllCardsSelected}
+          onChange={toggleSelectAllCards}
+          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+          aria-label="تحديد جميع البطاقات المعروضة"
+        />
+      ),
+      width: "50px",
+    },
     { key: "order", label: "ت", width: "70px", className: "text-center" },
     {
       key: "serial",
@@ -77,13 +156,13 @@ const CardTier = () => {
       className: "text-left",
     },
   ];
-  const statusLabels = {
-    available: "متاح",
-    sold: "مباع",
+  const soldLabels = {
+    true: "مباع",
+    false: "متاح",
   };
-  const statusStyles = {
-    available: "bg-emerald-100 text-emerald-700",
-    sold: "bg-rose-100 text-rose-700",
+  const soldStyles = {
+    true: "bg-rose-100 text-rose-700",
+    false: "bg-emerald-100 text-emerald-700",
   };
 
   const toggleCodeVisibility = (cardId) => {
@@ -133,8 +212,6 @@ const CardTier = () => {
         return "لا يمكن تكرار الكود لنفس النوع.";
       case "CARD_EXPIRY_DATE_INVALID":
         return "تاريخ انتهاء الصلاحية غير صالح.";
-      case "CARD_STATUS_INVALID":
-        return "حالة البطاقة غير صالحة.";
       default:
         return "تعذر إنشاء البطاقة. حاول مرة أخرى.";
     }
@@ -223,7 +300,19 @@ const CardTier = () => {
     setCardsError("");
     try {
       const response = await axiosClient.get("/cards", {
-        params: { tierId: cardTierId, page: cardsPage, limit: CARDS_PER_PAGE },
+        params: {
+          tierId: cardTierId,
+          page: cardsPage,
+          limit: CARDS_PER_PAGE,
+          ...(cardFilters.serialNumber
+            ? { serialNumber: cardFilters.serialNumber.trim() }
+            : {}),
+          ...(cardFilters.isSold ? { isSold: cardFilters.isSold } : {}),
+          ...(cardFilters.startDate
+            ? { startDate: cardFilters.startDate }
+            : {}),
+          ...(cardFilters.endDate ? { endDate: cardFilters.endDate } : {}),
+        },
       });
       const payload = response.data;
       if (Array.isArray(payload)) {
@@ -248,10 +337,12 @@ const CardTier = () => {
     } finally {
       setIsCardsLoading(false);
     }
-  }, [cardTierId, cardsPage]);
+  }, [cardTierId, cardsPage, cardFilters]);
 
   useEffect(() => {
     setCardsPage(1);
+    setDraftCardFilters(CARD_TIER_INITIAL_FILTERS);
+    setCardFilters(CARD_TIER_INITIAL_FILTERS);
   }, [cardTierId]);
 
   useEffect(() => {
@@ -263,6 +354,22 @@ const CardTier = () => {
   useEffect(() => {
     fetchCards();
   }, [fetchCards]);
+
+  useEffect(() => {
+    setSelectedCardIds(new Set());
+  }, [cardTierId, cardsPage, cardFilters]);
+
+  const handleApplyCardFilters = (event) => {
+    event?.preventDefault?.();
+    setCardFilters(draftCardFilters);
+    setCardsPage(1);
+  };
+
+  const handleClearCardFilters = () => {
+    setDraftCardFilters(CARD_TIER_INITIAL_FILTERS);
+    setCardFilters(CARD_TIER_INITIAL_FILTERS);
+    setCardsPage(1);
+  };
 
   const handleDeleteTier = useCallback(async () => {
     if (!cardTierId) {
@@ -433,12 +540,10 @@ const CardTier = () => {
             value={pin}
             onChange={(event) => setPin(event.target.value)}
           />
-          <CustomInput
+          <DateInput
             label="تاريخ انتهاء الصلاحية (اختياري)"
-            type="date"
             value={expiryDate}
             onChange={(event) => setExpiryDate(event.target.value)}
-            dir="ltr"
           />
         </div>
         {dialogError && (
@@ -488,7 +593,7 @@ const CardTier = () => {
     const [expiryDate, setExpiryDate] = useState(
       card?.expiryDate ? String(card.expiryDate).slice(0, 10) : "",
     );
-    const [status, setStatus] = useState(card?.status ?? "available");
+    const [isAvailable, setIsAvailable] = useState(!card?.soldTo);
     const [dialogError, setDialogError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -513,23 +618,19 @@ const CardTier = () => {
             value={pin}
             onChange={(event) => setPin(event.target.value)}
           />
-          <CustomInput
+          <DateInput
             label="تاريخ انتهاء الصلاحية (اختياري)"
-            type="date"
             value={expiryDate}
             onChange={(event) => setExpiryDate(event.target.value)}
-            dir="ltr"
           />
-          <label className="flex flex-col gap-2 text-sm text-slate-600">
-            <span>الحالة</span>
-            <select
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
-              <option value="available">متاح</option>
-              <option value="sold">مباع</option>
-            </select>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={isAvailable}
+              onChange={(event) => setIsAvailable(event.target.checked)}
+            />
+            متاح
           </label>
         </div>
         {dialogError && (
@@ -555,7 +656,7 @@ const CardTier = () => {
                 code,
                 pin,
                 expiryDate,
-                status,
+                isAvailable,
               });
               if (result?.ok) {
                 onCancel();
@@ -765,7 +866,6 @@ const CardTier = () => {
           code: payload.code?.trim(),
           pin: payload.pin?.trim() || null,
           expiryDate: payload.expiryDate || null,
-          status: payload.status,
         };
 
         if (!body.serialNumber || !/^[0-9]{15}$/.test(body.serialNumber)) {
@@ -775,7 +875,7 @@ const CardTier = () => {
           return { ok: false, error: "الكود مطلوب." };
         }
 
-        if (body.status === "available") {
+        if (payload.isAvailable) {
           body.soldTo = null;
           body.soldAt = null;
         }
@@ -815,6 +915,51 @@ const CardTier = () => {
     },
     [fetchCards],
   );
+
+  const handleDeleteSelectedCards = () => {
+    if (selectedCardIds.size === 0) return;
+
+    openDialog(
+      <div className="min-w-70 p-2">
+        <h2 className="text-base font-semibold text-slate-800">
+          تأكيد حذف البطاقات
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          سيتم حذف {selectedCardIds.size} بطاقة. هل تريد المتابعة؟
+        </p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            onClick={closeDialog}
+          >
+            إلغاء
+          </button>
+          <RedBtn
+            onClick={async () => {
+              setIsBulkDeletingCards(true);
+              setCardsError("");
+              try {
+                await axiosClient.delete("/cards/bulk", {
+                  data: { ids: Array.from(selectedCardIds) },
+                });
+                closeDialog();
+                setSelectedCardIds(new Set());
+                await fetchCards();
+              } catch (err) {
+                setCardsError("تعذر حذف البطاقات المحددة. حاول مرة أخرى.");
+              } finally {
+                setIsBulkDeletingCards(false);
+              }
+            }}
+            disabled={isBulkDeletingCards}
+          >
+            حذف
+          </RedBtn>
+        </div>
+      </div>,
+    );
+  };
 
   const handleCreateCard = useCallback(
     async ({ serialNumber, code, pin, expiryDate }) => {
@@ -1116,10 +1261,32 @@ const CardTier = () => {
             </Table>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <FilterBar
+            fields={CARD_TIER_FILTER_FIELDS}
+            values={draftCardFilters}
+            onChange={(key, value) =>
+              setDraftCardFilters((prev) => ({ ...prev, [key]: value }))
+            }
+            onApply={handleApplyCardFilters}
+            onClear={handleClearCardFilters}
+            gridClassName="grid gap-4 lg:grid-cols-4"
+          />
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               <span>بطاقات الفئة</span>
-              <span>الإجمالي: {cardsTotal}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <span>الإجمالي: {cardsTotal}</span>
+                <span>المحدد: {selectedCardIds.size}</span>
+                <button
+                  type="button"
+                  onClick={handleDeleteSelectedCards}
+                  disabled={selectedCardIds.size === 0 || isBulkDeletingCards}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-xs text-white disabled:opacity-60"
+                >
+                  حذف المحدد
+                </button>
+              </div>
             </div>
             {isCardsLoading ? (
               <div className="px-4 py-8 text-center text-sm text-slate-500">
@@ -1147,6 +1314,14 @@ const CardTier = () => {
                   <TableBody>
                     {cards.map((card, index) => (
                       <TableRow key={card._id}>
+                        <TableCell className="text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedCardIds.has(card._id)}
+                            onChange={() => toggleSelectOneCard(card._id)}
+                            className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                          />
+                        </TableCell>
                         <TableCell className="text-center text-slate-600">
                           {(cardsPage - 1) * CARDS_PER_PAGE + index + 1}
                         </TableCell>
@@ -1177,11 +1352,10 @@ const CardTier = () => {
                         <TableCell className="text-center">
                           <span
                             className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                              statusStyles[card.status] ??
-                              "bg-slate-100 text-slate-600"
+                              soldStyles[Boolean(card.soldTo)]
                             }`}
                           >
-                            {statusLabels[card.status] ?? "-"}
+                            {soldLabels[Boolean(card.soldTo)]}
                           </span>
                         </TableCell>
                         <TableCell className="text-left">

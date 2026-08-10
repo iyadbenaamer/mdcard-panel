@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
   createOne,
   deleteOne,
+  deleteMany,
   importFromExcel,
   getOne,
   getPaginated,
@@ -21,6 +22,7 @@ router.get("/get-one", verifyId, getOne);
 router.post("/", createOne);
 router.post("/import", upload.single("file"), importFromExcel);
 router.patch("/", verifyId, updateOne);
+router.delete("/bulk", deleteMany);
 router.delete("/", verifyId, deleteOne);
 
 export default router;

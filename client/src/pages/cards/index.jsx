@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import Layout from "layout";
 import {
@@ -9,19 +9,29 @@ import {
   TableRow,
 } from "components/Table";
 import CustomInput from "components/CustomInput";
+import DateInput from "components/DateInput";
 import SubmitBtn from "components/SubmitBtn";
 import RedBtn from "components/RedBtn";
+import FilterBar from "components/FilterBar";
 
 import axiosClient from "utils/AxiosClient";
 import { useDialog } from "components/dialog/DialogContext";
 
 import EyeIcon from "assets/icons/eye.svg?react";
-import SearchIcon from "assets/icons/search.svg?react";
+
+const CARD_INITIAL_FILTERS = {
+  serialNumber: "",
+  typeId: "",
+  isSold: "",
+  startDate: "",
+  endDate: "",
+};
 
 const Cards = () => {
   const CARDS_PER_PAGE = 10;
   const [categories, setCategories] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState("");
+  const [types, setTypes] = useState([]);
   const [cards, setCards] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isLoadingCards, setIsLoadingCards] = useState(false);
@@ -32,47 +42,88 @@ const Cards = () => {
   const [cardsPage, setCardsPage] = useState(1);
   const [totalCards, setTotalCards] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [serialFilter, setSerialFilter] = useState("");
+  const [filters, setFilters] = useState(CARD_INITIAL_FILTERS);
+  const [draftFilters, setDraftFilters] = useState(CARD_INITIAL_FILTERS);
   const [cardActionId, setCardActionId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const { openDialog, closeDialog } = useDialog();
 
-  const statusStyles = {
-    available: "bg-emerald-100 text-emerald-700",
-    sold: "bg-rose-100 text-rose-700",
+  const soldStyles = {
+    true: "bg-rose-100 text-rose-700",
+    false: "bg-emerald-100 text-emerald-700",
   };
-  const statusLabels = {
-    available: "متاح",
-    sold: "مباع",
+  const soldLabels = {
+    true: "مباع",
+    false: "متاح",
   };
 
-  const tableColumns = useMemo(
-    () => [
-      { key: "order", label: "ت", width: "70px", className: "text-center" },
-      {
-        key: "serial",
-        label: "الرقم التسلسلي",
-        width: "200px",
-        className: "",
-      },
-      { key: "code", label: "الكود", className: "" },
-      { key: "type", label: "نوع البطاقة" },
-      {
-        key: "status",
-        label: "الحالة",
-        width: "140px",
-        className: "text-center",
-      },
-      { key: "tier", label: "الفئة", width: "180px" },
-      {
-        key: "actions",
-        label: "إجراءات",
-        width: "160px",
-        className: "text-left",
-      },
-    ],
-    [],
-  );
+  const cardIdsOnPage = cards.map((card) => card._id).filter(Boolean);
+  const isAllSelected =
+    cardIdsOnPage.length > 0 &&
+    cardIdsOnPage.every((id) => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (isAllSelected) {
+        cardIdsOnPage.forEach((id) => next.delete(id));
+      } else {
+        cardIdsOnPage.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectOne = (cardId) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  };
+
+  const tableColumns = [
+    {
+      key: "select",
+      label: (
+        <input
+          type="checkbox"
+          checked={isAllSelected}
+          onChange={toggleSelectAll}
+          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+          aria-label="تحديد جميع البطاقات المعروضة"
+        />
+      ),
+      width: "50px",
+    },
+    { key: "order", label: "ت", width: "70px", className: "text-center" },
+    {
+      key: "serial",
+      label: "الرقم التسلسلي",
+      width: "200px",
+      className: "",
+    },
+    { key: "code", label: "الكود", className: "" },
+    { key: "type", label: "نوع البطاقة" },
+    {
+      key: "status",
+      label: "الحالة",
+      width: "140px",
+      className: "text-center",
+    },
+    { key: "tier", label: "الفئة", width: "180px" },
+    {
+      key: "actions",
+      label: "إجراءات",
+      width: "160px",
+      className: "text-left",
+    },
+  ];
 
   const fetchCategories = useCallback(async () => {
     setIsLoadingCategories(true);
@@ -89,6 +140,22 @@ const Cards = () => {
     }
   }, []);
 
+  const fetchTypes = useCallback(async () => {
+    if (!activeCategoryId) {
+      setTypes([]);
+      return;
+    }
+    try {
+      const response = await axiosClient.get("/card-types/by-category", {
+        params: { categoryId: activeCategoryId },
+      });
+      const payload = response.data ?? {};
+      setTypes(Array.isArray(payload.cardTypes) ? payload.cardTypes : []);
+    } catch (err) {
+      setTypes([]);
+    }
+  }, [activeCategoryId]);
+
   const fetchCardsByCategory = useCallback(async () => {
     if (!activeCategoryId) {
       setCards([]);
@@ -97,36 +164,26 @@ const Cards = () => {
     setIsLoadingCards(true);
     setError("");
     try {
-      if (serialFilter) {
-        const response = await axiosClient.get("/search/cards", {
-          params: {
-            query: serialFilter,
-            categoryId: activeCategoryId,
-            page: cardsPage,
-            limit: CARDS_PER_PAGE,
-            sortBy,
-            sortOrder,
-          },
-        });
-        const payload = response.data ?? {};
-        setCards(Array.isArray(payload.cards) ? payload.cards : []);
-        setTotalCards(payload.total ?? 0);
-        setTotalPages(payload.totalPages ?? 1);
-      } else {
-        const response = await axiosClient.get("/cards/by-category", {
-          params: {
-            categoryId: activeCategoryId,
-            page: cardsPage,
-            limit: CARDS_PER_PAGE,
-            sortBy,
-            sortOrder,
-          },
-        });
-        const payload = response.data ?? {};
-        setCards(Array.isArray(payload.cards) ? payload.cards : []);
-        setTotalCards(payload.total ?? 0);
-        setTotalPages(payload.totalPages ?? 1);
-      }
+      const response = await axiosClient.get("/cards/by-category", {
+        params: {
+          categoryId: activeCategoryId,
+          page: cardsPage,
+          limit: CARDS_PER_PAGE,
+          sortBy,
+          sortOrder,
+          ...(filters.serialNumber
+            ? { serialNumber: filters.serialNumber.trim() }
+            : {}),
+          ...(filters.typeId ? { typeId: filters.typeId } : {}),
+          ...(filters.isSold ? { isSold: filters.isSold } : {}),
+          ...(filters.startDate ? { startDate: filters.startDate } : {}),
+          ...(filters.endDate ? { endDate: filters.endDate } : {}),
+        },
+      });
+      const payload = response.data ?? {};
+      setCards(Array.isArray(payload.cards) ? payload.cards : []);
+      setTotalCards(payload.total ?? 0);
+      setTotalPages(payload.totalPages ?? 1);
     } catch (err) {
       setError("تعذر تحميل البطاقات. حاول مرة أخرى.");
       setCards([]);
@@ -135,7 +192,7 @@ const Cards = () => {
     } finally {
       setIsLoadingCards(false);
     }
-  }, [activeCategoryId, cardsPage, sortBy, sortOrder, serialFilter]);
+  }, [activeCategoryId, cardsPage, sortBy, sortOrder, filters]);
 
   useEffect(() => {
     fetchCategories();
@@ -152,8 +209,16 @@ const Cards = () => {
   }, [activeCategoryId, categories]);
 
   useEffect(() => {
+    fetchTypes();
+  }, [fetchTypes]);
+
+  useEffect(() => {
     fetchCardsByCategory();
   }, [fetchCardsByCategory]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [activeCategoryId, cardsPage, sortBy, sortOrder, filters]);
 
   useEffect(() => {
     if (cardsPage > totalPages) {
@@ -165,21 +230,20 @@ const Cards = () => {
     setActiveCategoryId(categoryId);
     setVisibleCodes({});
     setCardsPage(1);
+    setDraftFilters(CARD_INITIAL_FILTERS);
+    setFilters(CARD_INITIAL_FILTERS);
   };
 
-  const handleSearchSubmit = (event) => {
-    event.preventDefault();
-    setSerialFilter(searchQuery.trim());
+  const handleApplyFilters = (event) => {
+    event?.preventDefault?.();
+    setFilters(draftFilters);
     setCardsPage(1);
   };
 
-  const handleSearchChange = (event) => {
-    const nextValue = event.target.value;
-    setSearchQuery(nextValue);
-    if (!nextValue.trim()) {
-      setSerialFilter("");
-      setCardsPage(1);
-    }
+  const handleClearFilters = () => {
+    setDraftFilters(CARD_INITIAL_FILTERS);
+    setFilters(CARD_INITIAL_FILTERS);
+    setCardsPage(1);
   };
 
   const toggleCodeVisibility = (cardId) => {
@@ -229,8 +293,6 @@ const Cards = () => {
         return "لا يمكن تكرار الكود لنفس النوع.";
       case "CARD_EXPIRY_DATE_INVALID":
         return "تاريخ انتهاء الصلاحية غير صالح.";
-      case "CARD_STATUS_INVALID":
-        return "حالة البطاقة غير صالحة.";
       default:
         return "تعذر تنفيذ العملية. حاول مرة أخرى.";
     }
@@ -253,7 +315,7 @@ const Cards = () => {
     const [expiryDate, setExpiryDate] = useState(
       card?.expiryDate ? String(card.expiryDate).slice(0, 10) : "",
     );
-    const [status, setStatus] = useState(card?.status ?? "available");
+    const [isAvailable, setIsAvailable] = useState(!card?.isSold);
     const [dialogError, setDialogError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -278,23 +340,19 @@ const Cards = () => {
             value={pin}
             onChange={(event) => setPin(event.target.value)}
           />
-          <CustomInput
+          <DateInput
             label="تاريخ انتهاء الصلاحية (اختياري)"
-            type="date"
             value={expiryDate}
             onChange={(event) => setExpiryDate(event.target.value)}
-            dir="ltr"
           />
-          <label className="flex flex-col gap-2 text-sm text-slate-600">
-            <span>الحالة</span>
-            <select
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
-              <option value="available">متاح</option>
-              <option value="sold">مباع</option>
-            </select>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={isAvailable}
+              onChange={(event) => setIsAvailable(event.target.checked)}
+            />
+            متاح
           </label>
         </div>
         {dialogError && (
@@ -320,7 +378,7 @@ const Cards = () => {
                 code,
                 pin,
                 expiryDate,
-                status,
+                isAvailable,
               });
               if (result?.ok) {
                 onCancel();
@@ -399,7 +457,6 @@ const Cards = () => {
           code: payload.code?.trim(),
           pin: payload.pin?.trim() || null,
           expiryDate: payload.expiryDate || null,
-          status: payload.status,
         };
 
         if (!body.serialNumber || !/^[0-9]{15}$/.test(body.serialNumber)) {
@@ -409,7 +466,7 @@ const Cards = () => {
           return { ok: false, error: "الكود مطلوب." };
         }
 
-        if (body.status === "available") {
+        if (payload.isAvailable) {
           body.soldTo = null;
           body.soldAt = null;
         }
@@ -450,6 +507,51 @@ const Cards = () => {
     [fetchCardsByCategory],
   );
 
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
+
+    openDialog(
+      <div className="min-w-70 p-2">
+        <h2 className="text-base font-semibold text-slate-800">
+          تأكيد حذف البطاقات
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          سيتم حذف {selectedIds.size} بطاقة. هل تريد المتابعة؟
+        </p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            onClick={closeDialog}
+          >
+            إلغاء
+          </button>
+          <RedBtn
+            onClick={async () => {
+              setIsBulkDeleting(true);
+              setError("");
+              try {
+                await axiosClient.delete("/cards/bulk", {
+                  data: { ids: Array.from(selectedIds) },
+                });
+                closeDialog();
+                setSelectedIds(new Set());
+                await fetchCardsByCategory();
+              } catch (err) {
+                setError("تعذر حذف البطاقات المحددة. حاول مرة أخرى.");
+              } finally {
+                setIsBulkDeleting(false);
+              }
+            }}
+            disabled={isBulkDeleting}
+          >
+            حذف
+          </RedBtn>
+        </div>
+      </div>,
+    );
+  };
+
   return (
     <Layout>
       <div className="px-4 py-6" dir="rtl">
@@ -460,70 +562,96 @@ const Cards = () => {
               جميع البطاقات المتاحة حسب التصنيف
             </p>
           </div>
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm">
-          <div className="flex flex-wrap items-center gap-4">
-            <form
-              onSubmit={handleSearchSubmit}
-              className="flex flex-1 flex-wrap items-center gap-3"
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-slate-500">
+              المحدد: {selectedIds.size}
+            </span>
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              disabled={selectedIds.size === 0 || isBulkDeleting}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm text-white disabled:opacity-60"
             >
-              <div className="relative flex-1 min-w-55">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <SearchIcon className="h-4 w-4" />
-                </span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  placeholder="ابحث بالرقم التسلسلي"
-                  className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40 outline-1 ring-[#2c3e50]/40 ring-1"
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                disabled={isLoadingCards}
-              >
-                بحث
-              </button>
-            </form>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-500">الفرز حسب</span>
-              <select
-                className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
-                value={sortBy}
-                onChange={(event) => {
-                  setSortBy(event.target.value);
-                  setCardsPage(1);
-                }}
-              >
-                <option value="serialNumber">الرقم التسلسلي</option>
-                <option value="status">الحالة</option>
-                <option value="typeName">نوع البطاقة</option>
-                <option value="tierTitle">الفئة</option>
-                <option value="createdAt">تاريخ الإنشاء</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-500">الترتيب</span>
-              <select
-                className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
-                value={sortOrder}
-                onChange={(event) => {
-                  setSortOrder(event.target.value);
-                  setCardsPage(1);
-                }}
-              >
-                <option value="asc">تصاعدي</option>
-                <option value="desc">تنازلي</option>
-              </select>
-            </div>
-            <div className="text-sm text-slate-500">
-              إجمالي البطاقات: {totalCards}
-            </div>
+              حذف المحدد
+            </button>
           </div>
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-4 px-1">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500">الفرز حسب</span>
+            <select
+              className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(event.target.value);
+                setCardsPage(1);
+              }}
+            >
+              <option value="serialNumber">الرقم التسلسلي</option>
+              <option value="isSold">الحالة</option>
+              <option value="typeName">نوع البطاقة</option>
+              <option value="tierTitle">الفئة</option>
+              <option value="createdAt">تاريخ الإنشاء</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500">الترتيب</span>
+            <select
+              className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value);
+                setCardsPage(1);
+              }}
+            >
+              <option value="asc">تصاعدي</option>
+              <option value="desc">تنازلي</option>
+            </select>
+          </div>
+          <div className="text-sm text-slate-500">
+            إجمالي البطاقات: {totalCards}
+          </div>
+        </div>
+
+        <FilterBar
+          fields={[
+            {
+              key: "serialNumber",
+              type: "text",
+              label: "الرقم التسلسلي",
+              placeholder: "ابحث بالرقم التسلسلي",
+              colSpan: 2,
+            },
+            {
+              key: "typeId",
+              type: "select",
+              label: "نوع البطاقة",
+              options: [
+                { value: "", label: "الكل" },
+                ...types.map((type) => ({ value: type._id, label: type.name })),
+              ],
+            },
+            {
+              key: "isSold",
+              type: "select",
+              label: "الحالة",
+              options: [
+                { value: "", label: "الكل" },
+                { value: "false", label: "متاح" },
+                { value: "true", label: "مباع" },
+              ],
+            },
+            { key: "startDate", type: "date", label: "من تاريخ" },
+            { key: "endDate", type: "date", label: "إلى تاريخ" },
+          ]}
+          values={draftFilters}
+          onChange={(key, value) =>
+            setDraftFilters((prev) => ({ ...prev, [key]: value }))
+          }
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+        />
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-100 bg-slate-50 px-4 py-3">
@@ -577,6 +705,14 @@ const Cards = () => {
                 <TableBody>
                   {cards.map((card, index) => (
                     <TableRow key={card._id}>
+                      <TableCell className="text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(card._id)}
+                          onChange={() => toggleSelectOne(card._id)}
+                          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                        />
+                      </TableCell>
                       <TableCell className="text-center text-slate-600">
                         {(cardsPage - 1) * CARDS_PER_PAGE + index + 1}
                       </TableCell>
@@ -613,11 +749,10 @@ const Cards = () => {
                       <TableCell className="text-center">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                            statusStyles[card.status] ??
-                            "bg-slate-100 text-slate-600"
+                            soldStyles[Boolean(card.isSold)]
                           }`}
                         >
-                          {statusLabels[card.status] ?? "-"}
+                          {soldLabels[Boolean(card.isSold)]}
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-slate-600">

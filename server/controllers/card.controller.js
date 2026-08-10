@@ -14,6 +14,22 @@ import generateRandomSerialNumber from "../utils/generateRandomSerialNumber.js";
 
 const isValidSerialNumber = (value) => /^\d{15}$/.test(value);
 
+const normalizeDate = (value, isEnd) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  if (typeof value === "string" && value.length <= 10) {
+    if (isEnd) {
+      parsed.setHours(23, 59, 59, 999);
+    } else {
+      parsed.setHours(0, 0, 0, 0);
+    }
+  }
+
+  return parsed;
+};
+
 const hashCardCode = (value) =>
   crypto.createHash("sha256").update(value).digest("hex");
 
@@ -84,7 +100,7 @@ const withDecryptedCode = (card) => {
 
 export const getPaginated = async (req, res) => {
   try {
-    const { tierId, status, soldTo, serialNumber } = req.query;
+    const { tierId, soldTo, serialNumber, isSold } = req.query;
     const { page, limit } = parsePagination(req.query.page, req.query.limit);
 
     const filter = {};
@@ -96,22 +112,28 @@ export const getPaginated = async (req, res) => {
       filter.tierId = tierId;
     }
 
-    if (status) {
-      if (!["available", "sold"].includes(status)) {
-        return res.status(400).json({ code: "CARD_STATUS_INVALID" });
-      }
-      filter.status = status;
-    }
-
     if (soldTo) {
       if (!mongoose.Types.ObjectId.isValid(soldTo)) {
         return res.status(400).json({ code: "CARD_SOLD_TO_INVALID" });
       }
       filter.soldTo = soldTo;
+    } else if (isSold === "true") {
+      filter.soldTo = { $ne: null };
+    } else if (isSold === "false") {
+      filter.soldTo = null;
     }
 
     if (serialNumber) {
-      filter.serialNumber = serialNumber.trim();
+      const escaped = serialNumber.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.serialNumber = { $regex: escaped, $options: "i" };
+    }
+
+    const startDate = normalizeDate(req.query.startDate, false);
+    const endDate = normalizeDate(req.query.endDate, true);
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = startDate;
+      if (endDate) filter.createdAt.$lte = endDate;
     }
 
     const total = await Card.countDocuments(filter);
@@ -136,20 +158,21 @@ export const getPaginated = async (req, res) => {
 
 export const getByCategory = async (req, res) => {
   try {
-    const { categoryId, status, sortBy, sortOrder, serialNumber } = req.query;
+    const { categoryId, sortBy, sortOrder, serialNumber, typeId, isSold } =
+      req.query;
     const { page, limit } = parsePagination(req.query.page, req.query.limit);
 
     if (!categoryId || !mongoose.Types.ObjectId.isValid(categoryId)) {
       return res.status(400).json({ code: "CARD_CATEGORY_ID_INVALID" });
     }
 
-    if (status && !["available", "sold"].includes(status)) {
-      return res.status(400).json({ code: "CARD_STATUS_INVALID" });
+    if (typeId && !mongoose.Types.ObjectId.isValid(typeId)) {
+      return res.status(400).json({ code: "CARD_TYPE_ID_INVALID" });
     }
 
     const allowedSortFields = new Set([
       "serialNumber",
-      "status",
+      "isSold",
       "createdAt",
       "typeName",
       "tierTitle",
@@ -157,13 +180,36 @@ export const getByCategory = async (req, res) => {
     const sortField = allowedSortFields.has(sortBy) ? sortBy : "serialNumber";
     const sortDirection = sortOrder === "desc" ? -1 : 1;
 
-    const matchStatus = status ? { status } : {};
     const matchSerial = serialNumber
-      ? { serialNumber: serialNumber.trim() }
+      ? {
+          serialNumber: {
+            $regex: serialNumber.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+            $options: "i",
+          },
+        }
       : {};
 
+    const startDate = normalizeDate(req.query.startDate, false);
+    const endDate = normalizeDate(req.query.endDate, true);
+    const matchDate = {};
+    if (startDate || endDate) {
+      matchDate.createdAt = {};
+      if (startDate) matchDate.createdAt.$gte = startDate;
+      if (endDate) matchDate.createdAt.$lte = endDate;
+    }
+
+    const postJoinMatch = {
+      "type.categoryId": new mongoose.Types.ObjectId(categoryId),
+    };
+    if (typeId) {
+      postJoinMatch["type._id"] = new mongoose.Types.ObjectId(typeId);
+    }
+    if (isSold === "true" || isSold === "false") {
+      postJoinMatch.isSold = isSold === "true";
+    }
+
     const pipeline = [
-      { $match: { ...matchStatus, ...matchSerial } },
+      { $match: { ...matchSerial, ...matchDate } },
       {
         $lookup: {
           from: "card_tiers",
@@ -183,15 +229,16 @@ export const getByCategory = async (req, res) => {
       },
       { $unwind: "$type" },
       {
-        $match: {
-          "type.categoryId": new mongoose.Types.ObjectId(categoryId),
+        $addFields: {
+          isSold: { $ne: ["$soldTo", null] },
         },
       },
+      { $match: postJoinMatch },
       {
         $project: {
           serialNumber: 1,
           code: 1,
-          status: 1,
+          isSold: 1,
           tierTitle: "$tier.title",
           typeName: "$type.name",
           createdAt: 1,
@@ -246,16 +293,8 @@ export const getOne = async (req, res) => {
 export const updateOne = async (req, res) => {
   try {
     const { id } = req.query;
-    let {
-      tierId,
-      serialNumber,
-      code,
-      pin,
-      expiryDate,
-      status,
-      soldTo,
-      soldAt,
-    } = req.body;
+    let { tierId, serialNumber, code, pin, expiryDate, soldTo, soldAt } =
+      req.body;
 
     const card = await Card.findById(id);
     if (!card) {
@@ -347,13 +386,6 @@ export const updateOne = async (req, res) => {
       }
     }
 
-    if (status !== undefined) {
-      if (!["available", "sold"].includes(status)) {
-        return res.status(400).json({ code: "CARD_STATUS_INVALID" });
-      }
-      card.status = status;
-    }
-
     if (soldTo !== undefined) {
       if (soldTo === null || soldTo === "") {
         card.soldTo = null;
@@ -381,16 +413,8 @@ export const updateOne = async (req, res) => {
 
 export const createOne = async (req, res) => {
   try {
-    let {
-      tierId,
-      serialNumber,
-      code,
-      pin,
-      expiryDate,
-      status,
-      soldTo,
-      soldAt,
-    } = req.body;
+    let { tierId, serialNumber, code, pin, expiryDate, soldTo, soldAt } =
+      req.body;
 
     if (!tierId || !code) {
       return res.status(400).json({ code: "CARD_REQUIRED_FIELDS_MISSING" });
@@ -438,12 +462,6 @@ export const createOne = async (req, res) => {
       return res.status(409).json({ code: "CARD_CODE_DUPLICATE" });
     }
 
-    if (status !== undefined) {
-      if (!["available", "sold"].includes(status)) {
-        return res.status(400).json({ code: "CARD_STATUS_INVALID" });
-      }
-    }
-
     if (soldTo !== undefined) {
       if (soldTo === null || soldTo === "") {
         soldTo = null;
@@ -474,7 +492,6 @@ export const createOne = async (req, res) => {
         codeHash,
         pin,
         expiryDate: normalizedExpiryDate,
-        status,
         soldTo,
         soldAt,
       });
@@ -510,6 +527,36 @@ export const deleteOne = async (req, res) => {
 
     await card.deleteOne();
     return res.status(200).json({ code: "CARD_DELETED" });
+  } catch (err) {
+    return handleError(err, res);
+  }
+};
+
+export const deleteMany = async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const normalizedIds = [
+      ...new Set(ids.map((id) => String(id).trim())),
+    ].filter(Boolean);
+
+    if (normalizedIds.length === 0) {
+      return res.status(400).json({ code: "CARD_IDS_REQUIRED" });
+    }
+
+    const invalidIds = normalizedIds.filter(
+      (id) => !mongoose.Types.ObjectId.isValid(id),
+    );
+    if (invalidIds.length) {
+      return res.status(400).json({ code: "CARD_ID_INVALID" });
+    }
+
+    const result = await Card.deleteMany({
+      _id: { $in: normalizedIds },
+    });
+
+    return res.status(200).json({
+      deleted: result.deletedCount || 0,
+    });
   } catch (err) {
     return handleError(err, res);
   }
@@ -570,7 +617,6 @@ export const importFromExcel = async (req, res) => {
           serialNumber,
           code: encryptCardCode(normalizedCode),
           codeHash,
-          status: "available",
         });
         try {
           await card.save();
