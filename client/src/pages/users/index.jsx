@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 import Layout from "layout";
 import PrimaryBtn from "components/PrimaryBtn";
+import FilterBar from "components/FilterBar";
 import {
   Table,
   TableBody,
@@ -14,30 +15,68 @@ import { useDialog } from "components/dialog/DialogContext";
 import AddUserDialog from "./components/AddUserDialog";
 import axiosClient from "utils/AxiosClient";
 import formatArabicDate from "utils/formatArabicDate";
-import SearchIcon from "assets/icons/search.svg?react";
 
-const USERS_PER_PAGE = 8;
+const USERS_PER_PAGE = 20;
+
+const INITIAL_FILTERS = {
+  query: "",
+  status: "",
+  startDate: "",
+  endDate: "",
+};
+
+const USER_FILTER_FIELDS = [
+  {
+    key: "query",
+    type: "text",
+    label: "بحث",
+    placeholder: "ابحث بالاسم أو رقم الهاتف",
+    colSpan: 2,
+  },
+  {
+    key: "status",
+    type: "select",
+    label: "الحالة",
+    options: [
+      { value: "", label: "الكل" },
+      { value: "active", label: "مفعّل" },
+      { value: "inactive", label: "معطّل" },
+    ],
+  },
+  { key: "startDate", type: "date", label: "من تاريخ" },
+  { key: "endDate", type: "date", label: "إلى تاريخ" },
+];
+
+const ROLE_TABS = [
+  { key: "business", label: "تجاري" },
+  { key: "individual", label: "فردي" },
+];
+
+const USER_SORT_OPTIONS = [
+  { value: "name:asc", label: "الاسم (أ-ي)" },
+  { value: "name:desc", label: "الاسم (ي-أ)" },
+  { value: "status:desc", label: "الحالة" },
+];
 
 const Users = () => {
   const navigate = useNavigate();
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [roleTab, setRoleTab] = useState("business");
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [draftFilters, setDraftFilters] = useState(INITIAL_FILTERS);
   const [page, setPage] = useState(1);
   const [users, setUsers] = useState([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [reloadFlag, setReloadFlag] = useState(0); // used to trigger refetch when user added
 
   const { openDialog, closeDialog } = useDialog();
   const location = useLocation();
 
   const fetchUsers = useCallback(async () => {
-    // do not trigger when searching; searches handled separately
-    if (searchQuery.trim()) return;
-
     setIsLoading(true);
     setError("");
     try {
@@ -47,6 +86,11 @@ const Users = () => {
           limit: USERS_PER_PAGE,
           sortBy,
           sortOrder,
+          role: roleTab,
+          ...(filters.query ? { query: filters.query.trim() } : {}),
+          ...(filters.status ? { status: filters.status } : {}),
+          ...(filters.startDate ? { startDate: filters.startDate } : {}),
+          ...(filters.endDate ? { endDate: filters.endDate } : {}),
         },
       });
       setUsers(response.data?.users ?? []);
@@ -60,48 +104,11 @@ const Users = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, sortBy, sortOrder, searchQuery]);
+  }, [page, sortBy, sortOrder, roleTab, filters]);
 
-  // fetch initially and whenever relevant state changes or reloadFlag increments
   useEffect(() => {
-    let isMounted = true;
-    if (isMounted) fetchUsers();
-    return () => {
-      isMounted = false;
-    };
+    fetchUsers();
   }, [fetchUsers, reloadFlag]);
-
-  const handleSearchSubmit = async (event) => {
-    event.preventDefault();
-    const trimmedQuery = searchQuery.trim();
-    if (!trimmedQuery) {
-      return;
-    }
-    setIsLoading(true);
-    setError("");
-    try {
-      const response = await axiosClient.get("/search", {
-        params: { query: trimmedQuery },
-      });
-      setUsers(response.data ?? []);
-      setTotalUsers(response.data?.length ?? 0);
-      setTotalPages(1);
-      setPage(1);
-    } catch (err) {
-      setError("تعذر تنفيذ البحث. حاول مرة أخرى.");
-      setUsers([]);
-      setTotalUsers(0);
-      setTotalPages(1);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSearchClear = () => {
-    if (!searchQuery) return;
-    setSearchQuery("");
-    setPage(1);
-  };
 
   const handleUserAdded = () => {
     // after a new user is created refresh list and reset paging
@@ -135,6 +142,30 @@ const Users = () => {
     }
   }, [page, totalPages]);
 
+  const handleApplyFilters = (event) => {
+    event?.preventDefault?.();
+    setFilters(draftFilters);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setDraftFilters(INITIAL_FILTERS);
+    setFilters(INITIAL_FILTERS);
+    setPage(1);
+  };
+
+  const handleSortChange = (event) => {
+    const [field, direction] = event.target.value.split(":");
+    setSortBy(field || "name");
+    setSortOrder(direction || "asc");
+    setPage(1);
+  };
+
+  const handleRoleTabSelect = (tabKey) => {
+    setRoleTab(tabKey);
+    setPage(1);
+  };
+
   const statusStyles = {
     true: "bg-green-100 text-green-700",
     false: "bg-red-100 text-red-700",
@@ -145,6 +176,7 @@ const Users = () => {
   };
   const tableColumns = [
     { key: "name", label: "الاسم", width: "220px" },
+    { key: "role", label: "النوع", width: "120px" },
     { key: "phone", label: "رقم الهاتف", width: "180px" },
     { key: "created", label: "تاريخ الإنشاء", width: "170px" },
     { key: "status", label: "الحالة", width: "130px" },
@@ -165,56 +197,37 @@ const Users = () => {
           <PrimaryBtn onClick={openCreateDialog}>إنشاء مستخدم جديد</PrimaryBtn>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm">
-          <div className="flex flex-wrap items-center gap-4">
-            <form
-              onSubmit={handleSearchSubmit}
-              className="flex flex-1 flex-wrap items-center gap-3"
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {ROLE_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => handleRoleTabSelect(tab.key)}
+              className={`rounded-full px-4 py-2 text-sm transition ${
+                roleTab === tab.key
+                  ? "bg-primary text-white"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
             >
-              <div className="relative flex-1 min-w-55">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <SearchIcon className="h-4 w-4" />
-                </span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="ابحث بالاسم أو اسم المستخدم أو رقم الهاتف"
-                  className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40 outline-1 ring-[#2c3e50]/40 ring-1"
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                disabled={isLoading}
-              >
-                بحث
-              </button>
-            </form>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-500">الترتيب حسب</span>
-              <select
-                className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
-              >
-                <option value="name">الاسم</option>
-                <option value="status">الحالة</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-500">الترتيب</span>
-              <select
-                className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
-                value={sortOrder}
-                onChange={(event) => setSortOrder(event.target.value)}
-              >
-                <option value="asc">تصاعدي</option>
-                <option value="desc">تنازلي</option>
-              </select>
-            </div>
-          </div>
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        <FilterBar
+          fields={USER_FILTER_FIELDS}
+          values={draftFilters}
+          onChange={(key, value) =>
+            setDraftFilters((prev) => ({ ...prev, [key]: value }))
+          }
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+          sort={{
+            value: `${sortBy}:${sortOrder}`,
+            onChange: handleSortChange,
+            options: USER_SORT_OPTIONS,
+          }}
+        />
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {isLoading ? (
@@ -258,6 +271,17 @@ const Users = () => {
                       <div className="font-medium text-slate-800">
                         {user.name}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                          user.role === "individual"
+                            ? "bg-sky-100 text-sky-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {user.role === "individual" ? "فردي" : "تجاري"}
+                      </span>
                     </TableCell>
                     <TableCell className="text-sm text-slate-600" dir="ltr">
                       {user.phone}

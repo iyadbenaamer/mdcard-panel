@@ -25,6 +25,7 @@ import {
 const buildFormState = (user) => ({
   name: user?.name ?? "",
   phone: user?.phone ?? "",
+  role: user?.role ?? "business",
   balance: user?.balance ?? 0,
   password: "",
   isActive: resolveBoolean(user?.isActive, false),
@@ -182,6 +183,12 @@ const User = () => {
     if (!user) return [];
     return [
       { label: "الاسم", value: safeValue(user.name) },
+      {
+        label: "نوع الحساب",
+        value: user.role === "individual" ? "فردي" : "تجاري",
+        badge: true,
+        badgeVariant: "role",
+      },
       { label: "رقم الهاتف", value: safeValue(user.phone) },
       { label: "الرصيد", value: safeValue(user.balance) },
       {
@@ -251,6 +258,7 @@ const User = () => {
       const payload = {
         name: formState.name,
         phone: formState.phone,
+        role: formState.role,
         balance: formState.balance,
         isActive: formState.isActive,
         canBuy: formState.canBuy,
@@ -459,6 +467,22 @@ const User = () => {
                       }))
                     }
                   />
+                  <div>
+                    <label className="text-xs text-slate-500">نوع الحساب</label>
+                    <select
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      value={formState.role}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          role: event.target.value,
+                        }))
+                      }
+                    >
+                      <option value="business">تجاري</option>
+                      <option value="individual">فردي</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="text-xs text-slate-500">
                       حالة التحقق من الحساب

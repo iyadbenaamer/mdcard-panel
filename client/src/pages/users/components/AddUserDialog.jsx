@@ -5,7 +5,12 @@ import axiosClient from "utils/AxiosClient";
 import { getApiErrorMessage } from "utils/errorMessages";
 
 const AddUserDialog = ({ onAdded, onClose }) => {
-  const [form, setForm] = useState({ name: "", phone: "", password: "" });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    password: "",
+    role: "business",
+  });
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -14,6 +19,7 @@ const AddUserDialog = ({ onAdded, onClose }) => {
     const name = (form.name || "").toString().trim();
     const phone = (form.phone || "").toString().trim();
     const password = (form.password || "").toString();
+    const role = (form.role || "").toString().trim();
 
     if (!name) {
       setError("الاسم مطلوب.");
@@ -27,10 +33,14 @@ const AddUserDialog = ({ onAdded, onClose }) => {
       setError("كلمة المرور مطلوبة.");
       return;
     }
+    if (!["business", "individual"].includes(role)) {
+      setError("يرجى اختيار نوع الحساب.");
+      return;
+    }
 
     setIsSaving(true);
     try {
-      await axiosClient.post("/user", { name, phone, password });
+      await axiosClient.post("/user", { name, phone, password, role });
       if (onAdded) onAdded();
       onClose();
     } catch (err) {
@@ -68,6 +78,17 @@ const AddUserDialog = ({ onAdded, onClose }) => {
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
+        <div>
+          <label className="text-xs text-slate-500">نوع الحساب</label>
+          <select
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
+          >
+            <option value="business">تجاري</option>
+            <option value="individual">فردي</option>
+          </select>
+        </div>
       </div>
 
       {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}

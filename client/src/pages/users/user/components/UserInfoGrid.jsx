@@ -15,11 +15,17 @@ const UserInfoGrid = ({ infoItems, badgeClass }) => (
         >
           {item.badge ? (
             <span
-              className={`inline-flex rounded-full px-2 py-1 text-xs ${badgeClass(
-                item.value === "نعم" ||
-                  item.value === "مفعّل" ||
-                  item.value === "تم التحقق",
-              )}`}
+              className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                item.badgeVariant === "role"
+                  ? item.value === "فردي"
+                    ? "bg-sky-100 text-sky-700"
+                    : "bg-amber-100 text-amber-700"
+                  : badgeClass(
+                      item.value === "نعم" ||
+                        item.value === "مفعّل" ||
+                        item.value === "تم التحقق",
+                    )
+              }`}
             >
               {item.value}
             </span>
