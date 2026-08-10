@@ -320,7 +320,12 @@ export const deleteMany = async (req, res) => {
 
 export const getOne = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id: paramId } = req.params;
+    const id = paramId || req.query?.id;
+
+    if (!id) {
+      return res.status(400).json({ code: "ORDER_ID_REQUIRED" });
+    }
 
     const order = await Order.findOne({
       _id: id,

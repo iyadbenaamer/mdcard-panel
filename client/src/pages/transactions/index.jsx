@@ -9,10 +9,10 @@ import {
   TableHead,
   TableRow,
 } from "components/Table";
-import CustomInput from "components/CustomInput";
 import RedBtn from "components/RedBtn";
-import SubmitBtn from "components/SubmitBtn";
+import FilterBar from "components/FilterBar";
 import { useDialog } from "components/dialog/DialogContext";
+import OrderDetailsDialog from "pages/orders/components/OrderDetailsDialog";
 
 import axiosClient from "utils/AxiosClient";
 
@@ -27,6 +27,38 @@ const INITIAL_FILTERS = {
   endDate: "",
 };
 
+const TRANSACTION_FILTER_FIELDS = [
+  {
+    key: "userQuery",
+    type: "text",
+    label: "المستخدم",
+    placeholder: "ابحث بالاسم أو الهاتف",
+    colSpan: 2,
+  },
+  {
+    key: "type",
+    type: "select",
+    label: "النوع",
+    options: [
+      { value: "", label: "الكل" },
+      { value: "deposit", label: "إيداع" },
+      { value: "purchase", label: "شراء" },
+      { value: "refund", label: "استرداد" },
+    ],
+  },
+  { key: "minAmount", type: "number", label: "أقل مبلغ", placeholder: "0" },
+  { key: "maxAmount", type: "number", label: "أقصى مبلغ", placeholder: "0" },
+  { key: "startDate", type: "date", label: "من تاريخ" },
+  { key: "endDate", type: "date", label: "إلى تاريخ" },
+];
+
+const TRANSACTION_SORT_OPTIONS = [
+  { value: "createdAt:desc", label: "الأحدث" },
+  { value: "createdAt:asc", label: "الأقدم" },
+  { value: "amount:desc", label: "الأعلى قيمة" },
+  { value: "amount:asc", label: "الأقل قيمة" },
+];
+
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [totalTransactions, setTotalTransactions] = useState(0);
@@ -39,6 +71,7 @@ const Transactions = () => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loadingOrderId, setLoadingOrderId] = useState("");
   const [error, setError] = useState("");
   const [reloadFlag, setReloadFlag] = useState(0);
 
@@ -84,6 +117,24 @@ const Transactions = () => {
     if (!value) return "—";
     const raw = String(value);
     return raw.length > 8 ? raw.slice(-8) : raw;
+  };
+
+  const resolveOrderId = (transaction) => {
+    if (!transaction) return "";
+
+    if (typeof transaction.orderId === "object" && transaction.orderId?._id) {
+      return String(transaction.orderId._id);
+    }
+
+    if (transaction.orderId) {
+      return String(transaction.orderId);
+    }
+
+    if (typeof transaction.order === "object" && transaction.order?._id) {
+      return String(transaction.order._id);
+    }
+
+    return transaction.order ? String(transaction.order) : "";
   };
 
   const buildParams = () => {
@@ -158,6 +209,41 @@ const Transactions = () => {
     setSortBy(field || "createdAt");
     setSortOrder(direction || "desc");
     setPage(1);
+  };
+
+  const handleOpenOrder = async (transaction) => {
+    const orderId = resolveOrderId(transaction);
+    if (!orderId) return;
+
+    setLoadingOrderId(transaction._id);
+    try {
+      const response = await axiosClient.get("/orders/one", {
+        params: { id: orderId },
+      });
+      const order = response.data ?? null;
+
+      if (!order?._id) {
+        throw new Error("ORDER_NOT_FOUND");
+      }
+
+      openDialog(<OrderDetailsDialog order={order} onClose={closeDialog} />);
+    } catch (err) {
+      openDialog(
+        <div className="min-w-70 p-4 text-right" dir="rtl">
+          <h2 className="text-base font-semibold text-slate-800">
+            تعذر تحميل الطلب
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            لم نتمكن من جلب تفاصيل الطلب المرتبط بهذه المعاملة.
+          </p>
+          <div className="mt-4 flex items-center justify-end">
+            <RedBtn onClick={closeDialog}>إغلاق</RedBtn>
+          </div>
+        </div>,
+      );
+    } finally {
+      setLoadingOrderId("");
+    }
   };
 
   const transactionIdsOnPage = transactions
@@ -289,124 +375,20 @@ const Transactions = () => {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm">
-          <form onSubmit={handleApplyFilters}>
-            <div className="grid gap-4 lg:grid-cols-6">
-              <div className="lg:col-span-2">
-                <CustomInput
-                  label="المستخدم"
-                  placeholder="ابحث بالاسم أو الهاتف"
-                  value={draftFilters.userQuery}
-                  onChange={(event) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      userQuery: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <label className="flex flex-col gap-2 text-sm text-slate-600">
-                <span>النوع</span>
-                <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={draftFilters.type}
-                  onChange={(event) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      type: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">الكل</option>
-                  <option value="deposit">إيداع</option>
-                  <option value="purchase">شراء</option>
-                  <option value="refund">استرداد</option>
-                </select>
-              </label>
-
-              <CustomInput
-                label="أقل مبلغ"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={draftFilters.minAmount}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    minAmount: event.target.value,
-                  }))
-                }
-              />
-
-              <CustomInput
-                label="أقصى مبلغ"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={draftFilters.maxAmount}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    maxAmount: event.target.value,
-                  }))
-                }
-              />
-
-              <CustomInput
-                label="من تاريخ"
-                type="date"
-                value={draftFilters.startDate}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    startDate: event.target.value,
-                  }))
-                }
-              />
-
-              <CustomInput
-                label="إلى تاريخ"
-                type="date"
-                value={draftFilters.endDate}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    endDate: event.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <span>الفرز</span>
-                <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={`${sortBy}:${sortOrder}`}
-                  onChange={handleSortChange}
-                >
-                  <option value="createdAt:desc">الأحدث</option>
-                  <option value="createdAt:asc">الأقدم</option>
-                  <option value="amount:desc">الأعلى قيمة</option>
-                  <option value="amount:asc">الأقل قيمة</option>
-                </select>
-              </label>
-
-              <SubmitBtn className="min-w-28" onClick={handleApplyFilters}>
-                تطبيق الفلاتر
-              </SubmitBtn>
-
-              <button
-                type="button"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                onClick={handleClearFilters}
-              >
-                مسح الفلاتر
-              </button>
-            </div>
-          </form>
-        </div>
+        <FilterBar
+          fields={TRANSACTION_FILTER_FIELDS}
+          values={draftFilters}
+          onChange={(key, value) =>
+            setDraftFilters((prev) => ({ ...prev, [key]: value }))
+          }
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+          sort={{
+            value: `${sortBy}:${sortOrder}`,
+            onChange: handleSortChange,
+            options: TRANSACTION_SORT_OPTIONS,
+          }}
+        />
 
         {error && (
           <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
@@ -442,9 +424,8 @@ const Transactions = () => {
                   const typeClass =
                     typeStyles[transaction.type] ||
                     "bg-slate-100 text-slate-700";
-                  const orderValue = transaction.orderId
-                    ? formatShortId(transaction.orderId)
-                    : "—";
+                  const orderId = resolveOrderId(transaction);
+                  const isOrderLoading = loadingOrderId === transaction._id;
 
                   return (
                     <TableRow
@@ -499,9 +480,19 @@ const Transactions = () => {
                         {formatAmount(transaction.balanceAfter)}
                       </TableCell>
                       <TableCell>
-                        <span title={transaction.orderId || ""}>
-                          {orderValue}
-                        </span>
+                        {orderId ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenOrder(transaction)}
+                            disabled={isOrderLoading}
+                            title={orderId}
+                            className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            <span>عرض الطلب</span>
+                          </button>
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                       <TableCell>
                         {formatDateTime(transaction.createdAt)}

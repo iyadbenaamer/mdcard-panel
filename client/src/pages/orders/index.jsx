@@ -1,20 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
 import Layout from "layout";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-} from "components/Table";
-import CustomInput from "components/CustomInput";
+import { Table, TableBody, TableHead } from "components/Table";
 import RedBtn from "components/RedBtn";
-import SubmitBtn from "components/SubmitBtn";
+import FilterBar from "components/FilterBar";
 import { useDialog } from "components/dialog/DialogContext";
 
 import axiosClient from "utils/AxiosClient";
+import OrderDetailsDialog from "./components/OrderDetailsDialog";
+import OrderRow from "./components/OrderRow";
 
 const ORDERS_PER_PAGE = 10;
 
@@ -26,6 +20,37 @@ const INITIAL_FILTERS = {
   startDate: "",
   endDate: "",
 };
+
+const ORDER_FILTER_FIELDS = [
+  {
+    key: "userQuery",
+    type: "text",
+    label: "المستخدم",
+    placeholder: "ابحث بالاسم أو الهاتف",
+    colSpan: 2,
+  },
+  {
+    key: "provider",
+    type: "select",
+    label: "المصدر",
+    options: [
+      { value: "", label: "الكل" },
+      { value: "local", label: "محلي" },
+      { value: "bamboo", label: "بامبو" },
+    ],
+  },
+  { key: "minTotal", type: "number", label: "أقل إجمالي", placeholder: "0" },
+  { key: "maxTotal", type: "number", label: "أقصى إجمالي", placeholder: "0" },
+  { key: "startDate", type: "date", label: "من تاريخ" },
+  { key: "endDate", type: "date", label: "إلى تاريخ" },
+];
+
+const ORDER_SORT_OPTIONS = [
+  { value: "createdAt:desc", label: "الأحدث" },
+  { value: "createdAt:asc", label: "الأقدم" },
+  { value: "totalAmount:desc", label: "الأعلى قيمة" },
+  { value: "totalAmount:asc", label: "الأقل قيمة" },
+];
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -43,73 +68,6 @@ const Orders = () => {
   const [reloadFlag, setReloadFlag] = useState(0);
 
   const { openDialog, closeDialog } = useDialog();
-
-  const providerLabels = {
-    local: "محلي",
-    bamboo: "بامبو",
-    mixed: "مختلط",
-  };
-
-  const providerStyles = {
-    local: "bg-emerald-100 text-emerald-700",
-    bamboo: "bg-amber-100 text-amber-700",
-    mixed: "bg-slate-100 text-slate-700",
-  };
-
-  const formatAmount = (value) => {
-    const amount = Number(value);
-    if (Number.isNaN(amount)) return "—";
-    return amount.toLocaleString("ar-LY", {
-      style: "currency",
-      currency: "LYD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 3,
-    });
-  };
-
-  const formatDateTime = (value) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(date);
-  };
-
-  const formatOrderId = (value) => {
-    if (!value) return "—";
-    const raw = String(value);
-    return raw.length > 8 ? raw.slice(-8) : raw;
-  };
-
-  const summarizeItems = (items) => {
-    if (!Array.isArray(items) || items.length === 0) return "—";
-    const totalQuantity = items.reduce(
-      (sum, item) => sum + Number(item?.quantity || 0),
-      0,
-    );
-    const firstTitle = items[0]?.title || "عنصر";
-    if (items.length === 1) {
-      return `${firstTitle} (${totalQuantity})`;
-    }
-    const restCount = items.length - 1;
-    return `${firstTitle} + ${restCount} عناصر`;
-  };
-
-  const resolveProvider = (items) => {
-    if (!Array.isArray(items) || items.length === 0) return "mixed";
-    const providers = new Set(
-      items.map((item) => item?.provider).filter(Boolean),
-    );
-    if (providers.size === 1) {
-      return providers.values().next().value || "mixed";
-    }
-    return "mixed";
-  };
 
   const buildParams = () => {
     const params = {
@@ -284,6 +242,10 @@ const Orders = () => {
     );
   };
 
+  const handleOpenOrder = (order) => {
+    openDialog(<OrderDetailsDialog order={order} onClose={closeDialog} />);
+  };
+
   return (
     <Layout>
       <section className="px-4 py-6" dir="rtl">
@@ -311,123 +273,20 @@ const Orders = () => {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm">
-          <form onSubmit={handleApplyFilters}>
-            <div className="grid gap-4 lg:grid-cols-6">
-              <div className="lg:col-span-2">
-                <CustomInput
-                  label="المستخدم"
-                  placeholder="ابحث بالاسم أو الهاتف"
-                  value={draftFilters.userQuery}
-                  onChange={(event) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      userQuery: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <label className="flex flex-col gap-2 text-sm text-slate-600">
-                <span>المصدر</span>
-                <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={draftFilters.provider}
-                  onChange={(event) =>
-                    setDraftFilters((prev) => ({
-                      ...prev,
-                      provider: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">الكل</option>
-                  <option value="local">محلي</option>
-                  <option value="bamboo">بامبو</option>
-                </select>
-              </label>
-
-              <CustomInput
-                label="أقل إجمالي"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={draftFilters.minTotal}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    minTotal: event.target.value,
-                  }))
-                }
-              />
-
-              <CustomInput
-                label="أقصى إجمالي"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={draftFilters.maxTotal}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    maxTotal: event.target.value,
-                  }))
-                }
-              />
-
-              <CustomInput
-                label="من تاريخ"
-                type="date"
-                value={draftFilters.startDate}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    startDate: event.target.value,
-                  }))
-                }
-              />
-
-              <CustomInput
-                label="إلى تاريخ"
-                type="date"
-                value={draftFilters.endDate}
-                onChange={(event) =>
-                  setDraftFilters((prev) => ({
-                    ...prev,
-                    endDate: event.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <span>الفرز</span>
-                <select
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={`${sortBy}:${sortOrder}`}
-                  onChange={handleSortChange}
-                >
-                  <option value="createdAt:desc">الأحدث</option>
-                  <option value="createdAt:asc">الأقدم</option>
-                  <option value="totalAmount:desc">الأعلى قيمة</option>
-                  <option value="totalAmount:asc">الأقل قيمة</option>
-                </select>
-              </label>
-
-              <SubmitBtn className="min-w-28" onClick={handleApplyFilters}>
-                تطبيق الفلاتر
-              </SubmitBtn>
-
-              <button
-                type="button"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                onClick={handleClearFilters}
-              >
-                مسح الفلاتر
-              </button>
-            </div>
-          </form>
-        </div>
+        <FilterBar
+          fields={ORDER_FILTER_FIELDS}
+          values={draftFilters}
+          onChange={(key, value) =>
+            setDraftFilters((prev) => ({ ...prev, [key]: value }))
+          }
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+          sort={{
+            value: `${sortBy}:${sortOrder}`,
+            onChange: handleSortChange,
+            options: ORDER_SORT_OPTIONS,
+          }}
+        />
 
         {error && (
           <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
@@ -457,62 +316,18 @@ const Orders = () => {
               <TableBody>
                 {orders.map((order, index) => {
                   const isSelected = selectedIds.has(order._id);
-                  const userName = order?.user?.name || "—";
-                  const userPhone = order?.user?.phone || "";
-                  const providerKey = resolveProvider(order.items);
-                  const providerLabel = providerLabels[providerKey] || "مختلط";
-                  const providerClass =
-                    providerStyles[providerKey] || providerStyles.mixed;
 
                   return (
-                    <TableRow
+                    <OrderRow
                       key={order._id}
-                      className={isSelected ? "bg-slate-50" : ""}
-                    >
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectOne(order._id)}
-                          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
-                        />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {index + 1 + (page - 1) * ORDERS_PER_PAGE}
-                      </TableCell>
-                      <TableCell>
-                        <span title={order._id}>
-                          {formatOrderId(order._id)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {order.userId ? (
-                          <Link
-                            to={`/users/${order.userId}`}
-                            className="text-slate-700 hover:text-primary"
-                          >
-                            <div className="font-semibold">{userName}</div>
-                            {userPhone && (
-                              <div className="text-xs text-slate-500">
-                                {userPhone}
-                              </div>
-                            )}
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>{summarizeItems(order.items)}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs ${providerClass}`}
-                        >
-                          {providerLabel}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatAmount(order.totalAmount)}</TableCell>
-                      <TableCell>{formatDateTime(order.createdAt)}</TableCell>
-                    </TableRow>
+                      order={order}
+                      index={index}
+                      page={page}
+                      itemsPerPage={ORDERS_PER_PAGE}
+                      isSelected={isSelected}
+                      onToggleSelect={toggleSelectOne}
+                      onOpen={handleOpenOrder}
+                    />
                   );
                 })}
               </TableBody>
