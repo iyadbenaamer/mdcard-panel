@@ -25,6 +25,8 @@ const Category = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const { openDialog, closeDialog } = useDialog();
   const { setLevels } = useBreadcrumb();
 
@@ -79,7 +81,18 @@ const Category = () => {
   }, [cardTypes, isEditing]);
 
   const totalCardTypes = cardTypes.length;
-  const activeList = isEditing ? draftCardTypes : cardTypes;
+  const trimmedNameFilter = nameFilter.trim().toLowerCase();
+  const activeList = isEditing
+    ? draftCardTypes
+    : cardTypes.filter((type) => {
+        const matchesName =
+          !trimmedNameFilter ||
+          type.name?.toLowerCase().includes(trimmedNameFilter);
+        const matchesStatus =
+          !statusFilter ||
+          (statusFilter === "active" ? type.isActive : !type.isActive);
+        return matchesName && matchesStatus;
+      });
 
   const handleEditStart = () => {
     setDraftCardTypes(cardTypes);
@@ -411,6 +424,31 @@ const Category = () => {
       {successMessage && (
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
           {successMessage}
+        </div>
+      )}
+
+      {!isEditing && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm">
+          <div className="grid gap-4 lg:grid-cols-4">
+            <CustomInput
+              label="بحث بالاسم"
+              placeholder="ابحث عن نوع بطاقة"
+              value={nameFilter}
+              onChange={(event) => setNameFilter(event.target.value)}
+            />
+            <label className="flex flex-col gap-2 text-sm text-slate-600">
+              <span>الحالة</span>
+              <select
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                <option value="">الكل</option>
+                <option value="active">مفعّل</option>
+                <option value="inactive">غير مفعّل</option>
+              </select>
+            </label>
+          </div>
         </div>
       )}
 

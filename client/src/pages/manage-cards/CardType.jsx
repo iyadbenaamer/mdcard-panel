@@ -46,6 +46,8 @@ const CardType = () => {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [deleteTypeId, setDeleteTypeId] = useState(null);
+  const [tierTitleFilter, setTierTitleFilter] = useState("");
+  const [tierStatusFilter, setTierStatusFilter] = useState("");
   const { openDialog, closeDialog } = useDialog();
   const { setLevels } = useBreadcrumb();
 
@@ -159,7 +161,20 @@ const CardType = () => {
   }, [tiers, isEditing]);
 
   const totalTiers = tiers.length;
-  const activeList = isEditing ? draftTiers : tiers;
+  const trimmedTierTitleFilter = tierTitleFilter.trim().toLowerCase();
+  const activeList = isEditing
+    ? draftTiers
+    : tiers.filter((tierItem) => {
+        const matchesTitle =
+          !trimmedTierTitleFilter ||
+          tierItem.title?.toLowerCase().includes(trimmedTierTitleFilter);
+        const matchesStatus =
+          !tierStatusFilter ||
+          (tierStatusFilter === "active"
+            ? tierItem.isActive
+            : !tierItem.isActive);
+        return matchesTitle && matchesStatus;
+      });
   const tableColumns = [
     { key: "order", label: "الترتيب", width: "80px" },
     { key: "title", label: "العنوان" },
@@ -815,6 +830,32 @@ const CardType = () => {
         </div>
       )}
       <h1 className="mt-4 text-2xl font-semibold text-slate-800">الفئات</h1>
+
+      {!isEditing && (
+        <div className="mt-4 mx-auto w-full max-w-5xl rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm">
+          <div className="grid gap-4 lg:grid-cols-4">
+            <CustomInput
+              label="بحث بالعنوان"
+              placeholder="ابحث عن فئة بطاقة"
+              value={tierTitleFilter}
+              onChange={(event) => setTierTitleFilter(event.target.value)}
+            />
+            <label className="flex flex-col gap-2 text-sm text-slate-600">
+              <span>الحالة</span>
+              <select
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={tierStatusFilter}
+                onChange={(event) => setTierStatusFilter(event.target.value)}
+              >
+                <option value="">الكل</option>
+                <option value="active">مفعّل</option>
+                <option value="inactive">غير مفعّل</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 mb-0 mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
           <div className="px-4 py-10 text-center text-sm text-slate-500">

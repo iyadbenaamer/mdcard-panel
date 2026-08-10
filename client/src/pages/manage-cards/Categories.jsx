@@ -29,6 +29,7 @@ const Categories = () => {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [deleteCategoryId, setDeleteCategoryId] = useState(null);
+  const [nameFilter, setNameFilter] = useState("");
   const { openDialog, closeDialog } = useDialog();
   const { setLevels } = useBreadcrumb();
 
@@ -72,7 +73,14 @@ const Categories = () => {
   }, [categories, isEditing]);
 
   const totalCategories = categories.length;
-  const activeList = isEditing ? draftCategories : categories;
+  const trimmedNameFilter = nameFilter.trim().toLowerCase();
+  const activeList = isEditing
+    ? draftCategories
+    : trimmedNameFilter
+      ? categories.filter((category) =>
+          category.name?.toLowerCase().includes(trimmedNameFilter),
+        )
+      : categories;
   const tableColumns = [
     { key: "order", label: "الترتيب", width: "80px" },
     { key: "name", label: "اسم التصنيف" },
@@ -363,6 +371,17 @@ const Categories = () => {
       {successMessage && (
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
           {successMessage}
+        </div>
+      )}
+
+      {!isEditing && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 shadow-sm">
+          <CustomInput
+            label="بحث بالاسم"
+            placeholder="ابحث عن تصنيف"
+            value={nameFilter}
+            onChange={(event) => setNameFilter(event.target.value)}
+          />
         </div>
       )}
 
