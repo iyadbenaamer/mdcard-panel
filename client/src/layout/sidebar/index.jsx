@@ -19,8 +19,8 @@ const Sidebar = ({ showLogo = true, onItemClick }) => {
   const dispatch = useDispatch();
 
   return (
-    <aside className="w-full flex flex-col justify-between">
-      <div>
+    <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {showLogo && (
           <img src={logo} alt="Logo" className="w-50 mx-auto my-3" />
         )}
@@ -60,7 +60,7 @@ const Sidebar = ({ showLogo = true, onItemClick }) => {
           </SidebarItem>
         </ul>
       </div>
-      <div className="p-4">
+      <div className="shrink-0 p-4">
         <div
           className="flex gap-3 text-[#cb3f46] p-2 items-center cursor-pointer rounded-xl hover:bg-[#4c5b69] transition"
           onClick={async () => {

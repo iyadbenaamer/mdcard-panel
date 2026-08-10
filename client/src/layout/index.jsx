@@ -41,7 +41,7 @@ const Layout = ({ children }) => {
           <div
             className={`border-t border-white/10 overflow-hidden transition-all duration-200 ease-out ${
               isMenuOpen
-                ? "max-h-150 opacity-100"
+                ? "max-h-[calc(100svh-4rem)] opacity-100 overflow-y-auto"
                 : "max-h-0 opacity-0 pointer-events-none"
             }`}
           >
@@ -52,19 +52,15 @@ const Layout = ({ children }) => {
           </div>
         </div>
       )}
-      <div className="grid grid-cols-12 pb-28 min-h-svh">
+      <div className="flex min-h-svh bg-slate-50">
         {windowWidth >= 1024 && (
-          <div className="sidebar flex justify-center col-span-3 2xl:col-span-2 bg-[#2c3e50] text-white">
+          <aside className="sticky top-0 hidden h-svh shrink-0 overflow-hidden bg-[#2c3e50] text-white lg:flex lg:w-[280px] 2xl:w-[320px]">
             <Sidebar />
-          </div>
+          </aside>
         )}
-        <div
-          className={`col-span-12 lg:col-span-9 2xl:col-span-10 ${
-            windowWidth < 1024 ? "pt-2" : ""
-          }`}
-        >
+        <main className={`min-w-0 flex-1 ${windowWidth < 1024 ? "pt-2" : ""}`}>
           {children}
-        </div>
+        </main>
       </div>
     </>
   );
