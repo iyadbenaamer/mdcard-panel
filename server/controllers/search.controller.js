@@ -58,7 +58,7 @@ const buildCardTypeSearchFilter = (searchTerm) => {
 // Main search endpoint
 export const search = async (req, res) => {
   try {
-    let { query } = req.query;
+    let { query, role } = req.query;
     query = query?.trim();
     if (!query) {
       return res.status(400).json({ code: "SEARCH_QUERY_REQUIRED" });
@@ -68,8 +68,14 @@ export const search = async (req, res) => {
       return res.status(400).json({ code: "SEARCH_QUERY_TOO_LONG" });
     }
 
-    const users = await User.find(buildUserSearchFilter(query))
-      .select("name phone createdAt isActive")
+    const roleFilter =
+      role === "business" || role === "individual" ? { role } : {};
+
+    const users = await User.find({
+      ...buildUserSearchFilter(query),
+      ...roleFilter,
+    })
+      .select("name phone role createdAt isActive")
       .sort({ createdAt: -1 })
       .limit(50);
     return res.json(users);
@@ -123,7 +129,7 @@ export const searchCards = async (req, res) => {
 
     const allowedSortFields = new Set([
       "serialNumber",
-      "status",
+      "isSold",
       "createdAt",
       "typeName",
       "tierTitle",
@@ -167,7 +173,7 @@ export const searchCards = async (req, res) => {
         $project: {
           serialNumber: 1,
           code: 1,
-          status: 1,
+          isSold: { $ne: ["$soldTo", null] },
           createdAt: 1,
           tierTitle: "$tier.title",
           typeName: "$type.name",
