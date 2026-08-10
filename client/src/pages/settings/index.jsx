@@ -12,6 +12,7 @@ const Settings = () => {
   const [editingAll, setEditingAll] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [keyFilter, setKeyFilter] = useState("");
 
   const protectedSettings = ["support", "سعر الدولار", "dollarRate"];
   const isDollarRateKey = (key) => ["سعر الدولار", "dollarRate"].includes(key);
@@ -164,6 +165,11 @@ const Settings = () => {
 
   const hasChanges = useMemo(() => Object.keys(edits).length > 0, [edits]);
 
+  const trimmedKeyFilter = keyFilter.trim().toLowerCase();
+  const visibleSettings = trimmedKeyFilter
+    ? settings.filter((s) => s.key?.toLowerCase().includes(trimmedKeyFilter))
+    : settings;
+
   return (
     <Layout>
       <div className="p-8 max-w-6xl mx-auto">
@@ -227,6 +233,18 @@ const Settings = () => {
           </div>
         )}
 
+        {!loading && settings.length > 0 && (
+          <div className="mb-6">
+            <input
+              type="text"
+              value={keyFilter}
+              onChange={(event) => setKeyFilter(event.target.value)}
+              placeholder="ابحث بمفتاح الإعداد"
+              className="w-full max-w-sm rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            />
+          </div>
+        )}
+
         {/* Content */}
         {loading ? (
           <div className="flex flex-col items-center py-20 gap-4 text-gray-500">
@@ -237,9 +255,13 @@ const Settings = () => {
           <div className="text-center py-20 text-gray-400">
             لا توجد إعدادات حاليًا
           </div>
+        ) : visibleSettings.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">
+            لا توجد نتائج مطابقة للبحث
+          </div>
         ) : (
           <div className="grid gap-5">
-            {settings.map((s) => (
+            {visibleSettings.map((s) => (
               <div
                 key={s._id || s.key}
                 className="bg-white rounded-2xl p-6 shadow-sm  hover:shadow-md transition"
