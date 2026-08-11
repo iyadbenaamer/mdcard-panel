@@ -39,6 +39,9 @@ const userSchema = new Schema(
     // if the user is blocked by admin, they won't be able to buy cards, but they can still login and use the app
     canBuy: { type: Boolean, default: true },
     canSendCode: { type: Boolean, default: true },
+    // Expo push tokens for devices the user is logged into; used to deliver
+    // notifications (e.g. dollar rate changes) via the Expo push service.
+    pushTokens: { type: [String], default: [] },
     resetPassword: {
       token: String,
       remainingAttempts: { type: Number, default: 20, max: 20, min: 0 },

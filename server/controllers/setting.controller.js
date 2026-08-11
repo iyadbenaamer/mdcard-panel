@@ -1,7 +1,9 @@
 import { Types } from "mongoose";
 
 import Setting from "../models/setting.model.js";
+import User from "../models/user.model.js";
 import { handleError } from "../utils/errorHandler.js";
+import { sendPushNotifications } from "../utils/pushNotifications.js";
 
 const DOLLAR_RATE_KEYS = ["سعر الدولار", "dollarRate"];
 const isDollarRateKey = (key) =>
@@ -11,6 +13,29 @@ const isNumericDollarRate = (value) => {
   const strValue = value.toString().trim();
   if (!strValue) return false;
   return !Number.isNaN(Number(strValue));
+};
+
+// Notifies every business user with a registered device of a dollar rate
+// change. Not awaited by callers: delivery failures should never affect the
+// setting update response.
+const notifyBusinessUsersOfDollarRateChange = async (newValue) => {
+  try {
+    const businessUsers = await User.find({
+      role: "business",
+      pushTokens: { $exists: true, $not: { $size: 0 } },
+    }).select("pushTokens");
+
+    const tokens = businessUsers.flatMap((user) => user.pushTokens);
+    if (tokens.length === 0) return;
+
+    await sendPushNotifications(tokens, {
+      title: "MD Card",
+      body: `تم تحديث سعر الدولار`,
+      data: { type: "dollarRateChanged", value: newValue },
+    });
+  } catch (err) {
+    console.error("Failed to notify business users of dollar rate change:", err);
+  }
 };
 
 export const getAll = async (req, res) => {
@@ -132,6 +157,15 @@ export const updateOne = async (req, res) => {
       { $set: update },
       { new: true },
     );
+
+    if (
+      isDollarRateKey(targetKey) &&
+      update.value !== undefined &&
+      update.value !== existingSetting.value
+    ) {
+      notifyBusinessUsersOfDollarRateChange(updated.value);
+    }
+
     return res.status(200).json(updated);
   } catch (err) {
     return handleError(err, res);
@@ -202,7 +236,16 @@ export const updateMany = async (req, res) => {
           { $set: update },
           { new: true },
         );
-        if (updated) results.push(updated);
+        if (updated) {
+          results.push(updated);
+          if (
+            isDollarRateKey(targetKey) &&
+            update.value !== undefined &&
+            update.value !== existing?.value
+          ) {
+            notifyBusinessUsersOfDollarRateChange(updated.value);
+          }
+        }
       } else {
         const trimmedKey = key?.toString().trim();
         if (!trimmedKey) continue;
