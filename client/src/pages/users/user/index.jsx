@@ -561,7 +561,9 @@ const User = () => {
 
             <UserInfoGrid infoItems={infoItems} badgeClass={badgeClass} />
 
-            <CustomPricingSection userId={user?._id} />
+            {user.role !== "individual" && (
+              <CustomPricingSection userId={user?._id} />
+            )}
 
             <TransactionsSection
               transactionColumns={transactionColumns}

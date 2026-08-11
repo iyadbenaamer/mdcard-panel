@@ -26,6 +26,8 @@ const translateCustomPricingError = (code, fallback) => {
     CUSTOM_PRICING_EXISTS: "يوجد تسعير مخصص لهذه الفئة بالفعل.",
     CUSTOM_PRICING_ID_INVALID: "تعذر تحديد التسعير المطلوب.",
     CUSTOM_PRICING_NOT_FOUND: "التسعير المخصص غير موجود.",
+    CUSTOM_PRICING_USER_IS_INDIVIDUAL:
+      "التسعير المخصص متاح فقط لحسابات الأعمال التجارية.",
   };
   return map[code] || fallback || code || "حدث خطأ. حاول مرة أخرى.";
 };
@@ -38,6 +40,7 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
   const [typeId, setTypeId] = useState("");
   const [tierId, setTierId] = useState("");
   const [buyPrice, setBuyPrice] = useState("");
+  const [buyPriceUsd, setBuyPriceUsd] = useState("");
   const [dialogError, setDialogError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
@@ -205,6 +208,17 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
           value={buyPrice}
           onChange={(event) => setBuyPrice(event.target.value)}
         />
+        <CustomInput
+          label="سعر الشراء بالدولار"
+          type="number"
+          value={buyPriceUsd}
+          onChange={(event) => setBuyPriceUsd(event.target.value)}
+          placeholder="اتركه فارغًا إذا لم يكن مطلوبًا"
+        />
+        <p className="text-xs text-slate-400">
+          إذا تم تحديد السعر بالدولار، سيُستخدم هو (مضروبًا في سعر الدولار)
+          بدلاً من السعر بالدينار.
+        </p>
       </div>
       {dialogError && (
         <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
@@ -230,13 +244,13 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
               setDialogError("التصنيف والنوع والفئة مطلوبة.");
               return;
             }
-            if (buyPrice === "") {
-              setDialogError("سعر الشراء مطلوب.");
+            if (buyPrice === "" && buyPriceUsd === "") {
+              setDialogError("سعر الشراء (أو بالدولار) مطلوب.");
               return;
             }
             setIsSubmitting(true);
             setDialogError("");
-            const result = await onCreate({ tierId, buyPrice });
+            const result = await onCreate({ tierId, buyPrice, buyPriceUsd });
             if (result?.ok) {
               onCancel();
             } else if (result?.error) {
@@ -258,6 +272,7 @@ const pricingColumns = [
   { key: "type", label: "النوع" },
   { key: "tier", label: "الفئة" },
   { key: "buyPrice", label: "سعر الشراء" },
+  { key: "buyPriceUsd", label: "سعر الشراء بالدولار" },
   { key: "createdAt", label: "التاريخ" },
   { key: "actions", label: "إجراءات", className: "text-left" },
 ];
@@ -299,15 +314,15 @@ const CustomPricingSection = ({ userId }) => {
     fetchPricingRules();
   }, [fetchPricingRules]);
 
-  const handleCreatePricing = async ({ tierId, buyPrice }) => {
+  const handleCreatePricing = async ({ tierId, buyPrice, buyPriceUsd }) => {
     if (!userId) {
       return { ok: false, error: "تعذر تحديد المستخدم." };
     }
     if (!tierId) {
       return { ok: false, error: "تعذر تحديد الفئة." };
     }
-    if (buyPrice === "") {
-      return { ok: false, error: "سعر الشراء مطلوب." };
+    if (buyPrice === "" && buyPriceUsd === "") {
+      return { ok: false, error: "سعر الشراء (أو بالدولار) مطلوب." };
     }
     setPricingError("");
     setPricingSuccess("");
@@ -315,7 +330,8 @@ const CustomPricingSection = ({ userId }) => {
       await axiosClient.post("/user/custom-pricing", {
         userId,
         tierId,
-        buyPrice: Number(buyPrice),
+        buyPrice: buyPrice === "" ? null : Number(buyPrice),
+        buyPriceUsd: buyPriceUsd === "" ? null : Number(buyPriceUsd),
       });
       await fetchPricingRules();
       setPricingSuccess("تم إضافة تسعير مخصص بنجاح.");
@@ -454,7 +470,12 @@ const CustomPricingSection = ({ userId }) => {
                   <TableCell>{safeValue(rule.categoryName)}</TableCell>
                   <TableCell>{safeValue(rule.typeName)}</TableCell>
                   <TableCell>{safeValue(rule.tierTitle)}</TableCell>
-                  <TableCell>{formatAmount(rule.buyPrice)}</TableCell>
+                  <TableCell>
+                    {rule.buyPrice != null ? formatAmount(rule.buyPrice) : "—"}
+                  </TableCell>
+                  <TableCell dir="ltr">
+                    {rule.buyPriceUsd != null ? `$${rule.buyPriceUsd}` : "—"}
+                  </TableCell>
                   <TableCell>
                     {rule.createdAt
                       ? formatArabicDateTime(rule.createdAt)

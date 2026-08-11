@@ -41,6 +41,7 @@ const buildPricingPipeline = (match) => [
       userId: 1,
       tierId: 1,
       buyPrice: 1,
+      buyPriceUsd: 1,
       createdAt: 1,
       tierTitle: "$tier.title",
       typeId: "$type._id",
@@ -73,7 +74,7 @@ export const getUserCustomPricing = async (req, res) => {
 
 export const createUserCustomPricing = async (req, res) => {
   try {
-    const { userId, tierId, buyPrice } = req.body;
+    const { userId, tierId, buyPrice, buyPriceUsd } = req.body;
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ code: "CUSTOM_PRICING_USER_ID_INVALID" });
     }
@@ -81,13 +82,29 @@ export const createUserCustomPricing = async (req, res) => {
       return res.status(400).json({ code: "CUSTOM_PRICING_TIER_ID_INVALID" });
     }
 
-    const parsedBuyPrice = Number(buyPrice);
-    if (Number.isNaN(parsedBuyPrice) || parsedBuyPrice < 0) {
+    // Mirrors CardTier's own buyPrice/buyPriceUsd: either one may be left
+    // unset, but at least one valid, non-negative price is required.
+    const nextBuyPrice =
+      buyPrice === undefined || buyPrice === null || buyPrice === ""
+        ? null
+        : Number(buyPrice);
+    const nextBuyPriceUsd =
+      buyPriceUsd === undefined || buyPriceUsd === null || buyPriceUsd === ""
+        ? null
+        : Number(buyPriceUsd);
+
+    if (
+      (nextBuyPrice === null && nextBuyPriceUsd === null) ||
+      (nextBuyPrice !== null &&
+        (Number.isNaN(nextBuyPrice) || nextBuyPrice < 0)) ||
+      (nextBuyPriceUsd !== null &&
+        (Number.isNaN(nextBuyPriceUsd) || nextBuyPriceUsd < 0))
+    ) {
       return res.status(400).json({ code: "CUSTOM_PRICING_BUY_PRICE_INVALID" });
     }
 
     const [user, tier] = await Promise.all([
-      User.findById(userId).select("_id"),
+      User.findById(userId).select("_id role"),
       CardTier.findById(tierId).select("_id typeId title"),
     ]);
 
@@ -97,6 +114,15 @@ export const createUserCustomPricing = async (req, res) => {
 
     if (!tier) {
       return res.status(404).json({ code: "CARD_TIER_NOT_FOUND" });
+    }
+
+    // Custom pricing only applies to business accounts - individual users
+    // always pay sellPrice (see getTierPriceForUser), so a rule created for
+    // one would silently never take effect.
+    if (user.role === "individual") {
+      return res
+        .status(400)
+        .json({ code: "CUSTOM_PRICING_USER_IS_INDIVIDUAL" });
     }
 
     const existingRule = await CustomPricing.findOne({
@@ -110,7 +136,8 @@ export const createUserCustomPricing = async (req, res) => {
     const rule = new CustomPricing({
       userId,
       tierId,
-      buyPrice: parsedBuyPrice,
+      buyPrice: nextBuyPrice,
+      buyPriceUsd: nextBuyPriceUsd,
     });
 
     await rule.save();
