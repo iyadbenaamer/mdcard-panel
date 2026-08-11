@@ -7,7 +7,12 @@ import { getApiErrorMessage } from "utils/errorMessages";
 const AddSettingDialog = ({ onAdded, onClose }) => {
   const [form, setForm] = useState({ key: "", value: "", description: "" });
   const [error, setError] = useState("");
-  const protectedSettings = ["support", "سعر الدولار"];
+  const protectedSettings = [
+    "support",
+    "سعر الدولار",
+    "مدة الحذف التلقائي بالأيام",
+    "autoDeleteDurationDays",
+  ];
 
   const handleSubmit = async () => {
     setError("");

@@ -15,6 +15,52 @@ const isNumericDollarRate = (value) => {
   return !Number.isNaN(Number(strValue));
 };
 
+// Key holding the number of days after a sale (card/order/transaction) after
+// which the auto-delete cron job (see utils/autoDelete.js) purges the record.
+export const AUTO_DELETE_DURATION_KEYS = [
+  "مدة الحذف التلقائي بالأيام",
+  "autoDeleteDurationDays",
+];
+const isAutoDeleteDurationKey = (key) =>
+  AUTO_DELETE_DURATION_KEYS.includes((key ?? "").toString().trim());
+const isValidAutoDeleteDuration = (value) => {
+  if (value === undefined || value === null) return false;
+  const strValue = value.toString().trim();
+  if (!strValue) return false;
+  const num = Number(strValue);
+  return !Number.isNaN(num) && num >= 0;
+};
+
+const PROTECTED_SETTING_KEYS = [
+  "support",
+  ...DOLLAR_RATE_KEYS,
+  ...AUTO_DELETE_DURATION_KEYS,
+];
+
+const NUMERIC_KEY_VALIDATORS = [
+  {
+    test: isDollarRateKey,
+    isValid: isNumericDollarRate,
+    code: "SETTING_DOLLAR_RATE_VALUE_INVALID",
+    message: "Dollar rate value must be numeric",
+  },
+  {
+    test: isAutoDeleteDurationKey,
+    isValid: isValidAutoDeleteDuration,
+    code: "SETTING_AUTO_DELETE_DURATION_VALUE_INVALID",
+    message: "Auto-delete duration must be a non-negative number",
+  },
+];
+
+// Returns an error payload if `key` is a validated protected setting whose
+// `value` fails its validator, otherwise null.
+const validateNumericSetting = (key, value) => {
+  for (const { test, isValid, code, message } of NUMERIC_KEY_VALIDATORS) {
+    if (test(key) && !isValid(value)) return { code, message };
+  }
+  return null;
+};
+
 // Notifies every business user with a registered device of a dollar rate
 // change. Not awaited by callers: delivery failures should never affect the
 // setting update response.
@@ -70,15 +116,11 @@ export const createOne = async (req, res) => {
     if (!trimmedKey)
       return res.status(400).json({ code: "SETTING_KEY_REQUIRED" });
 
-    if (isDollarRateKey(trimmedKey) && !isNumericDollarRate(value)) {
-      return res.status(400).json({
-        code: "SETTING_DOLLAR_RATE_VALUE_INVALID",
-        message: "Dollar rate value must be numeric",
-      });
-    }
+    const numericError = validateNumericSetting(trimmedKey, value);
+    if (numericError) return res.status(400).json(numericError);
 
     // Prevent creating protected settings
-    if (["support", "سعر الدولار"].includes(trimmedKey)) {
+    if (PROTECTED_SETTING_KEYS.includes(trimmedKey)) {
       return res.status(403).json({
         code: "SETTING_CANNOT_CREATE",
         message: "Cannot create protected setting",
@@ -120,22 +162,16 @@ export const updateOne = async (req, res) => {
     }
 
     const targetKey = update.key ?? existingSetting.key;
-    if (
-      isDollarRateKey(targetKey) &&
-      update.value !== undefined &&
-      !isNumericDollarRate(update.value)
-    ) {
-      return res.status(400).json({
-        code: "SETTING_DOLLAR_RATE_VALUE_INVALID",
-        message: "Dollar rate value must be numeric",
-      });
+    if (update.value !== undefined) {
+      const numericError = validateNumericSetting(targetKey, update.value);
+      if (numericError) return res.status(400).json(numericError);
     }
 
-    // do not allow renaming the protected keys (support, dollarRate)
+    // do not allow renaming the protected keys (support, dollarRate, auto-delete duration)
     if (
-      ["support", "سعر الدولار"].includes(existingSetting.key) &&
+      PROTECTED_SETTING_KEYS.includes(existingSetting.key) &&
       update.key &&
-      !["support", "سعر الدولار"].includes(update.key)
+      !PROTECTED_SETTING_KEYS.includes(update.key)
     ) {
       return res.status(403).json({
         code: "SETTING_CANNOT_RENAME",
@@ -198,24 +234,18 @@ export const updateMany = async (req, res) => {
 
         if (
           existing &&
-          ["support", "سعر الدولار"].includes(existing.key) &&
+          PROTECTED_SETTING_KEYS.includes(existing.key) &&
           update.key &&
-          !["support", "سعر الدولار"].includes(update.key)
+          !PROTECTED_SETTING_KEYS.includes(update.key)
         ) {
           // skip attempts to rename protected settings
           delete update.key;
         }
 
         const targetKey = update.key ?? existing?.key;
-        if (
-          isDollarRateKey(targetKey) &&
-          update.value !== undefined &&
-          !isNumericDollarRate(update.value)
-        ) {
-          return res.status(400).json({
-            code: "SETTING_DOLLAR_RATE_VALUE_INVALID",
-            message: "Dollar rate value must be numeric",
-          });
+        if (update.value !== undefined) {
+          const numericError = validateNumericSetting(targetKey, update.value);
+          if (numericError) return res.status(400).json(numericError);
         }
 
         if (update.key) {
@@ -249,12 +279,8 @@ export const updateMany = async (req, res) => {
       } else {
         const trimmedKey = key?.toString().trim();
         if (!trimmedKey) continue;
-        if (isDollarRateKey(trimmedKey) && !isNumericDollarRate(value)) {
-          return res.status(400).json({
-            code: "SETTING_DOLLAR_RATE_VALUE_INVALID",
-            message: "Dollar rate value must be numeric",
-          });
-        }
+        const numericError = validateNumericSetting(trimmedKey, value);
+        if (numericError) return res.status(400).json(numericError);
         const exists = await Setting.findOne({ key: trimmedKey });
         if (exists) continue;
         const newSetting = new Setting({
@@ -282,7 +308,7 @@ export const deleteOne = async (req, res) => {
     }
     const setting = await Setting.findById(id);
     if (!setting) return res.status(404).json({ code: "SETTING_NOT_FOUND" });
-    if (["support", "سعر الدولار"].includes(setting.key)) {
+    if (PROTECTED_SETTING_KEYS.includes(setting.key)) {
       return res.status(403).json({
         code: "SETTING_CANNOT_DELETE",
         message: "Cannot delete protected setting",

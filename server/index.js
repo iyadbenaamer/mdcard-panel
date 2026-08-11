@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
+import cron from "node-cron";
 
 import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/user.route.js";
@@ -23,6 +24,7 @@ import transactionRoute from "./routes/transaction.route.js";
 import settingRoute from "./routes/setting.route.js";
 import dealRoute from "./routes/deal.route.js";
 import connectDB from "./config/db.js";
+import { runAutoDeleteJob } from "./utils/autoDelete.js";
 
 import { verifyToken } from "./middleware/auth.middleware.js";
 
@@ -78,6 +80,13 @@ app.use("/api/deals", dealRoute);
 
 /*MONGOOSE SETUP*/
 connectDB();
+
+// Purges sold-out cards/orders/transactions past the admin-configured
+// retention window (see the "مدة الحذف التلقائي بالأيام" setting). Runs
+// daily at 00:00 server time; a no-op when the setting is unset or 0.
+cron.schedule("0 0 * * *", () => {
+  runAutoDeleteJob();
+});
 
 const PORT = process.env.PORT;
 const server = createServer(app);

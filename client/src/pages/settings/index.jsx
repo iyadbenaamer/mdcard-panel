@@ -14,8 +14,21 @@ const Settings = () => {
   const [message, setMessage] = useState(null);
   const [keyFilter, setKeyFilter] = useState("");
 
-  const protectedSettings = ["support", "سعر الدولار", "dollarRate"];
+  const AUTO_DELETE_DURATION_KEYS = [
+    "مدة الحذف التلقائي بالأيام",
+    "autoDeleteDurationDays",
+  ];
+  const protectedSettings = [
+    "support",
+    "سعر الدولار",
+    "dollarRate",
+    ...AUTO_DELETE_DURATION_KEYS,
+  ];
   const isDollarRateKey = (key) => ["سعر الدولار", "dollarRate"].includes(key);
+  const isAutoDeleteDurationKey = (key) =>
+    AUTO_DELETE_DURATION_KEYS.includes(key);
+  const isNumericSettingKey = (key) =>
+    isDollarRateKey(key) || isAutoDeleteDurationKey(key);
   const isNumericValue = (value) => {
     if (value === null || value === undefined) return false;
     const strValue = String(value).trim();
@@ -55,6 +68,17 @@ const Settings = () => {
         list.unshift({
           key: "سعر الدولار",
           value: null,
+          _id: null,
+        });
+      }
+      if (
+        !list.find((it) => AUTO_DELETE_DURATION_KEYS.includes(it.key))
+      ) {
+        list.unshift({
+          key: AUTO_DELETE_DURATION_KEYS[0],
+          value: null,
+          description:
+            "عدد الأيام لحذف الكروت المباعة والطلبات والمعاملات تلقائيًا بعد بيعها (0 لتعطيل الخاصية)",
           _id: null,
         });
       }
@@ -124,6 +148,20 @@ const Settings = () => {
       : undefined;
     if (dollarRateValue !== undefined && !isNumericValue(dollarRateValue)) {
       setMessage({ type: "error", text: "قيمة سعر الدولار يجب أن تكون رقمية" });
+      return;
+    }
+
+    const autoDeleteSetting = settings.find((s) =>
+      isAutoDeleteDurationKey(s.key),
+    );
+    const autoDeleteValue = autoDeleteSetting
+      ? edits[autoDeleteSetting.key]
+      : undefined;
+    if (autoDeleteValue !== undefined && !isNumericValue(autoDeleteValue)) {
+      setMessage({
+        type: "error",
+        text: "قيمة مدة الحذف التلقائي يجب أن تكون رقمية",
+      });
       return;
     }
 
@@ -274,7 +312,8 @@ const Settings = () => {
 
                     {editingAll ? (
                       <input
-                        type={isDollarRateKey(s.key) ? "number" : "text"}
+                        type={isNumericSettingKey(s.key) ? "number" : "text"}
+                        min={isAutoDeleteDurationKey(s.key) ? 0 : undefined}
                         value={edits[s.key] ?? ""}
                         onChange={(e) =>
                           setEdits((ex) => ({
