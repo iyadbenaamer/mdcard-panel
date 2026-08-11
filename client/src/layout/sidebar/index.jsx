@@ -3,7 +3,6 @@ import { useDispatch } from "react-redux";
 import SidebarItem from "./SidebarItem";
 
 import { logout } from "state";
-import axiosClient from "utils/AxiosClient";
 
 import logo from "assets/logo-white.png";
 import HomeIcon from "assets/icons/home.svg?react";
@@ -13,6 +12,7 @@ import CardIcon from "assets/icons/card.svg?react";
 import OrdersIcon from "assets/icons/orders.svg?react";
 import TransactionsIcon from "assets/icons/transactions.svg?react";
 import SettingsIcon from "assets/icons/settings.svg?react";
+import DealsIcon from "assets/icons/deals.svg?react";
 import LogoutIcon from "assets/icons/logout.svg?react";
 
 const Sidebar = ({ showLogo = true, onItemClick }) => {
@@ -54,6 +54,9 @@ const Sidebar = ({ showLogo = true, onItemClick }) => {
             onClick={onItemClick}
           >
             <TransactionsIcon fill="transparent" />
+          </SidebarItem>
+          <SidebarItem to="/deals" name="العروض الترويجية" onClick={onItemClick}>
+            <DealsIcon />
           </SidebarItem>
           <SidebarItem to="/settings" name="الإعدادات" onClick={onItemClick}>
             <SettingsIcon />

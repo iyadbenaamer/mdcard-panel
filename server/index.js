@@ -21,6 +21,7 @@ import cardRoute from "./routes/card.route.js";
 import orderRoute from "./routes/order.route.js";
 import transactionRoute from "./routes/transaction.route.js";
 import settingRoute from "./routes/setting.route.js";
+import dealRoute from "./routes/deal.route.js";
 import connectDB from "./config/db.js";
 
 import { verifyToken } from "./middleware/auth.middleware.js";
@@ -73,6 +74,7 @@ app.use("/api/cards", cardRoute);
 app.use("/api/orders", orderRoute);
 app.use("/api/transactions", transactionRoute);
 app.use("/api/settings", settingRoute);
+app.use("/api/deals", dealRoute);
 
 /*MONGOOSE SETUP*/
 connectDB();

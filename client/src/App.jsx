@@ -18,6 +18,7 @@ import User from "pages/users/user";
 import ManageCards from "pages/manage-cards";
 import Cards from "pages/cards";
 import Settings from "pages/settings";
+import Deals from "pages/deals";
 
 const App = () => {
   //if user is stored in redux state, then the user is logged in
@@ -106,6 +107,12 @@ const App = () => {
                       ) : (
                         <Navigate to="/login" replace />
                       )
+                    }
+                  />
+                  <Route
+                    path="/deals"
+                    element={
+                      isLoggedin ? <Deals /> : <Navigate to="/login" replace />
                     }
                   />
                   <Route
