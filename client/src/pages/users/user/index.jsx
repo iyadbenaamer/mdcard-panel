@@ -10,6 +10,7 @@ import RedBtn from "components/RedBtn";
 import { useDialog } from "components/dialog/DialogContext";
 import ArrowRightIcon from "assets/icons/arrow-right.svg?react";
 import CustomPricingSection from "./components/CustomPricingSection";
+import FavoritesSection from "./components/FavoritesSection";
 import UserInfoGrid from "./components/UserInfoGrid";
 import TransactionsSection from "./components/TransactionsSection";
 import DepositDialog from "./components/DepositDialog";
@@ -564,6 +565,8 @@ const User = () => {
             {user.role !== "individual" && (
               <CustomPricingSection userId={user?._id} />
             )}
+
+            <FavoritesSection userId={user?._id} />
 
             <TransactionsSection
               transactionColumns={transactionColumns}

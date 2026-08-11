@@ -13,6 +13,7 @@ import {
   createUserCustomPricing,
   deleteUserCustomPricing,
 } from "../controllers/customPricing.controller.js";
+import { getUserFavorites } from "../controllers/favorite.controller.js";
 
 import { verifyFields, verifyId } from "../middleware/validate.middleware.js";
 
@@ -28,5 +29,8 @@ router.delete("/", deleteUser);
 router.get("/custom-pricing", getUserCustomPricing);
 router.post("/custom-pricing", createUserCustomPricing);
 router.delete("/custom-pricing", deleteUserCustomPricing);
+
+// Admin favorites (read-only)
+router.get("/favorites", getUserFavorites);
 
 export default router;
