@@ -52,7 +52,7 @@ const Dialog = (props) => {
     >
       <section
         ref={prompt}
-        className="dialog py-2 bg-white max-h-svh w-[calc(100vw-8px)] rounded-xl shadow-lg md:h-auto md:w-auto"
+        className="dialog py-2 bg-white max-h-svh w-[calc(100vw-8px)] rounded-xl shadow-lg md:h-auto md:w-[35vw]"
       >
         <div className="flex gap-2">
           <button

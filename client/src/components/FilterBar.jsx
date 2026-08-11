@@ -13,7 +13,9 @@ const FilterField = ({ field, value, onChange }) => {
 
   if (field.type === "select") {
     return (
-      <label className={`flex flex-col gap-2 text-sm text-slate-600 ${colSpanClass}`}>
+      <label
+        className={`flex flex-col gap-2 text-sm text-slate-600 ${colSpanClass}`}
+      >
         <span>{field.label}</span>
         <select
           className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -47,7 +49,7 @@ const FilterField = ({ field, value, onChange }) => {
       <CustomInput
         label={field.label}
         type={field.type === "number" ? "number" : "text"}
-        min={field.type === "number" ? (field.min ?? "0") : undefined}
+        min={field.type === "number" ? field.min ?? "0" : undefined}
         placeholder={field.placeholder}
         value={value ?? ""}
         onChange={(event) => onChange(field.key, event.target.value)}
@@ -103,7 +105,7 @@ const FilterBar = ({
         )}
 
         <SubmitBtn className="min-w-28" onClick={onApply} disabled={isApplying}>
-          تطبيق الفلاتر
+          بحث
         </SubmitBtn>
 
         <button
