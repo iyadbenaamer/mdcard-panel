@@ -5,6 +5,8 @@ import ExcelJS from "exceljs";
 import Card from "../models/card.model.js";
 import CardTier from "../models/cardTier.model.js";
 import CardType from "../models/cardType.model.js";
+import Order from "../models/order.model.js";
+import User from "../models/user.model.js";
 
 import { handleError } from "../utils/errorHandler.js";
 import parsePagination from "../utils/parsePagination.js";
@@ -59,6 +61,35 @@ const normalizeOptionalDate = (value) => {
   }
 
   return parsedDate;
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Cards don't reference their sale order directly: the Order's line items
+// list the Card ids that were fulfilled. Resolves an order id/id-fragment
+// query down to the matching card ids by walking that chain.
+const resolveCardIdsByOrderQuery = async (query) => {
+  const isFullId = mongoose.Types.ObjectId.isValid(query) && query.length === 24;
+  const orderMatch = isFullId
+    ? { _id: new mongoose.Types.ObjectId(query) }
+    : {
+        $expr: {
+          $regexMatch: {
+            input: { $toString: "$_id" },
+            regex: escapeRegex(query),
+            options: "i",
+          },
+        },
+      };
+
+  const orders = await Order.find(orderMatch).select("items.cards");
+  const cardIds = new Set();
+  orders.forEach((order) => {
+    (order.items ?? []).forEach((item) => {
+      (item.cards ?? []).forEach((cardId) => cardIds.add(String(cardId)));
+    });
+  });
+  return [...cardIds];
 };
 
 const parseExcelCodes = async (filePath) => {
@@ -156,10 +187,19 @@ export const getPaginated = async (req, res) => {
   }
 };
 
+const CARD_SEARCH_TYPES = new Set(["serialNumber", "orderNumber", "pin"]);
+
 export const getByCategory = async (req, res) => {
   try {
-    const { categoryId, sortBy, sortOrder, serialNumber, typeId, isSold } =
-      req.query;
+    const {
+      categoryId,
+      sortBy,
+      sortOrder,
+      typeId,
+      isSold,
+      searchType,
+      searchQuery,
+    } = req.query;
     const { page, limit } = parsePagination(req.query.page, req.query.limit);
 
     if (!categoryId || !mongoose.Types.ObjectId.isValid(categoryId)) {
@@ -180,14 +220,26 @@ export const getByCategory = async (req, res) => {
     const sortField = allowedSortFields.has(sortBy) ? sortBy : "serialNumber";
     const sortDirection = sortOrder === "desc" ? -1 : 1;
 
-    const matchSerial = serialNumber
-      ? {
-          serialNumber: {
-            $regex: serialNumber.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-            $options: "i",
-          },
-        }
-      : {};
+    const trimmedQuery = searchQuery?.trim();
+    const effectiveSearchType = CARD_SEARCH_TYPES.has(searchType)
+      ? searchType
+      : "serialNumber";
+
+    let matchSearch = {};
+    if (trimmedQuery) {
+      if (effectiveSearchType === "pin") {
+        matchSearch = { pin: { $regex: escapeRegex(trimmedQuery), $options: "i" } };
+      } else if (effectiveSearchType === "orderNumber") {
+        const cardIds = await resolveCardIdsByOrderQuery(trimmedQuery);
+        matchSearch = {
+          _id: { $in: cardIds.map((id) => new mongoose.Types.ObjectId(id)) },
+        };
+      } else {
+        matchSearch = {
+          serialNumber: { $regex: escapeRegex(trimmedQuery), $options: "i" },
+        };
+      }
+    }
 
     const startDate = normalizeDate(req.query.startDate, false);
     const endDate = normalizeDate(req.query.endDate, true);
@@ -209,7 +261,7 @@ export const getByCategory = async (req, res) => {
     }
 
     const pipeline = [
-      { $match: { ...matchSerial, ...matchDate } },
+      { $match: { ...matchSearch, ...matchDate } },
       {
         $lookup: {
           from: "card_tiers",
@@ -229,6 +281,15 @@ export const getByCategory = async (req, res) => {
       },
       { $unwind: "$type" },
       {
+        $lookup: {
+          from: "users",
+          localField: "soldTo",
+          foreignField: "_id",
+          as: "buyer",
+        },
+      },
+      { $unwind: { path: "$buyer", preserveNullAndEmptyArrays: true } },
+      {
         $addFields: {
           isSold: { $ne: ["$soldTo", null] },
         },
@@ -241,6 +302,8 @@ export const getByCategory = async (req, res) => {
           isSold: 1,
           tierTitle: "$tier.title",
           typeName: "$type.name",
+          buyerName: "$buyer.name",
+          buyerPhone: "$buyer.phone",
           createdAt: 1,
         },
       },
@@ -284,7 +347,25 @@ export const getOne = async (req, res) => {
       return res.status(404).json({ code: "CARD_NOT_FOUND" });
     }
 
-    return res.status(200).json(withDecryptedCode(card));
+    const tier = await CardTier.findById(card.tierId).select("title typeId");
+    const [type, buyer, order] = await Promise.all([
+      tier ? CardType.findById(tier.typeId).select("name") : null,
+      card.soldTo ? User.findById(card.soldTo).select("name phone") : null,
+      // Cards don't store their sale order directly; the order's line items
+      // list the card ids that were fulfilled, so we look it up in reverse.
+      card.soldTo
+        ? Order.findOne({ "items.cards": card._id }).select("_id")
+        : null,
+    ]);
+
+    const data = withDecryptedCode(card);
+    data.tierTitle = tier?.title ?? null;
+    data.typeName = type?.name ?? null;
+    data.buyerName = buyer?.name ?? null;
+    data.buyerPhone = buyer?.phone ?? null;
+    data.orderId = order?._id ?? null;
+
+    return res.status(200).json(data);
   } catch (err) {
     return handleError(err, res);
   }

@@ -13,6 +13,7 @@ import DateInput from "components/DateInput";
 import SubmitBtn from "components/SubmitBtn";
 import RedBtn from "components/RedBtn";
 import FilterBar from "components/FilterBar";
+import OrderDetailsDialog from "pages/orders/components/OrderDetailsDialog";
 
 import axiosClient from "utils/AxiosClient";
 import { useDialog } from "components/dialog/DialogContext";
@@ -20,11 +21,24 @@ import { useDialog } from "components/dialog/DialogContext";
 import EyeIcon from "assets/icons/eye.svg?react";
 
 const CARD_INITIAL_FILTERS = {
-  serialNumber: "",
+  searchType: "serialNumber",
+  searchQuery: "",
   typeId: "",
   isSold: "",
   startDate: "",
   endDate: "",
+};
+
+const CARD_SEARCH_TYPE_OPTIONS = [
+  { value: "serialNumber", label: "الرقم التسلسلي" },
+  { value: "orderNumber", label: "رقم الطلب" },
+  { value: "pin", label: "الرقم السري" },
+];
+
+const CARD_SEARCH_TYPE_PLACEHOLDERS = {
+  serialNumber: "ابحث بالرقم التسلسلي",
+  orderNumber: "ابحث برقم الطلب الذي بيعت فيه البطاقة",
+  pin: "ابحث بالرقم السري للبطاقة",
 };
 
 const Cards = () => {
@@ -117,10 +131,11 @@ const Cards = () => {
       className: "text-center",
     },
     { key: "tier", label: "الفئة", width: "180px" },
+    { key: "buyer", label: "المشتري", width: "180px" },
     {
       key: "actions",
       label: "إجراءات",
-      width: "160px",
+      width: "230px",
       className: "text-left",
     },
   ];
@@ -171,8 +186,11 @@ const Cards = () => {
           limit: CARDS_PER_PAGE,
           sortBy,
           sortOrder,
-          ...(filters.serialNumber
-            ? { serialNumber: filters.serialNumber.trim() }
+          ...(filters.searchQuery
+            ? {
+                searchType: filters.searchType || "serialNumber",
+                searchQuery: filters.searchQuery.trim(),
+              }
             : {}),
           ...(filters.typeId ? { typeId: filters.typeId } : {}),
           ...(filters.isSold ? { isSold: filters.isSold } : {}),
@@ -445,6 +463,200 @@ const Cards = () => {
     );
   };
 
+  const CardDetailsDialog = ({ card, onCancel }) => {
+    const [details, setDetails] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [dialogError, setDialogError] = useState("");
+    const [isCodeVisible, setIsCodeVisible] = useState(false);
+    const [isOrderLoading, setIsOrderLoading] = useState(false);
+
+    useEffect(() => {
+      let isMounted = true;
+      const fetchDetails = async () => {
+        setIsLoading(true);
+        setDialogError("");
+        try {
+          const response = await axiosClient.get("/cards/get-one", {
+            params: { id: card._id },
+          });
+          if (isMounted) setDetails(response.data);
+        } catch (err) {
+          if (isMounted) setDialogError("تعذر تحميل تفاصيل البطاقة.");
+        } finally {
+          if (isMounted) setIsLoading(false);
+        }
+      };
+      fetchDetails();
+      return () => {
+        isMounted = false;
+      };
+    }, [card?._id]);
+
+    const handleOpenOrder = async () => {
+      if (!details?.orderId) return;
+      setIsOrderLoading(true);
+      setDialogError("");
+      try {
+        const response = await axiosClient.get("/orders/one", {
+          params: { id: details.orderId },
+        });
+        const order = response.data ?? null;
+        if (!order?._id) throw new Error("ORDER_NOT_FOUND");
+        openDialog(<OrderDetailsDialog order={order} onClose={closeDialog} />);
+      } catch (err) {
+        setDialogError("تعذر تحميل الطلب المرتبط بهذه البطاقة.");
+      } finally {
+        setIsOrderLoading(false);
+      }
+    };
+
+    const isSold = details ? Boolean(details.soldTo) : Boolean(card?.isSold);
+
+    return (
+      <div className="min-w-80 max-w-md p-2" dir="rtl">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-800">
+            تفاصيل البطاقة
+          </h2>
+          <span
+            className={`inline-flex rounded-full px-2 py-1 text-xs ${soldStyles[isSold]}`}
+          >
+            {soldLabels[isSold]}
+          </span>
+        </div>
+
+        {isLoading ? (
+          <div className="mt-6 py-6 text-center text-sm text-slate-500">
+            جاري تحميل التفاصيل...
+          </div>
+        ) : !details ? (
+          <div className="mt-6 py-6 text-center text-sm text-rose-500">
+            {dialogError || "تعذر تحميل تفاصيل البطاقة."}
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-slate-500">الرقم التسلسلي</span>
+              <span className="font-mono text-slate-800" dir="ltr">
+                {renderSerialNumber(details.serialNumber)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-slate-500">الكود</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-slate-800" dir="ltr">
+                  {isCodeVisible
+                    ? renderSerialNumber(details.code) || "-"
+                    : maskCode(details.code)}
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
+                  onClick={() => setIsCodeVisible((prev) => !prev)}
+                  aria-label={isCodeVisible ? "إخفاء الكود" : "إظهار الكود"}
+                >
+                  <EyeIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-slate-500">الرقم السري (PIN)</span>
+              <span className="text-slate-800">{details.pin || "-"}</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-slate-500">نوع البطاقة</span>
+              <span className="text-slate-800">{details.typeName || "-"}</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-slate-500">الفئة</span>
+              <span className="text-slate-800">{details.tierTitle || "-"}</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-slate-500">تاريخ انتهاء الصلاحية</span>
+              <span className="text-slate-800">
+                {details.expiryDate
+                  ? String(details.expiryDate).slice(0, 10)
+                  : "-"}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-slate-500">تاريخ الإضافة</span>
+              <span className="text-slate-800">
+                {details.createdAt
+                  ? String(details.createdAt).slice(0, 10)
+                  : "-"}
+              </span>
+            </div>
+
+            {isSold && (
+              <>
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                  <span className="text-slate-500">المشتري</span>
+                  <div className="text-left">
+                    <div className="text-slate-800">
+                      {details.buyerName || "-"}
+                    </div>
+                    {details.buyerPhone && (
+                      <div className="text-xs text-slate-500" dir="ltr">
+                        {details.buyerPhone}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                  <span className="text-slate-500">تاريخ البيع</span>
+                  <span className="text-slate-800">
+                    {details.soldAt
+                      ? String(details.soldAt).slice(0, 10)
+                      : "-"}
+                  </span>
+                </div>
+
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleOpenOrder}
+                    disabled={!details.orderId || isOrderLoading}
+                    className="w-full rounded-xl border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isOrderLoading
+                      ? "جاري تحميل الطلب..."
+                      : details.orderId
+                        ? "عرض الطلب"
+                        : "لا يوجد طلب مرتبط بهذه البطاقة"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {dialogError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+                {dialogError}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mt-4 flex items-center justify-end">
+          <button
+            type="button"
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            onClick={onCancel}
+          >
+            إغلاق
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const handleEditCard = useCallback(
     async (cardId, payload) => {
       if (!cardId) {
@@ -617,10 +829,18 @@ const Cards = () => {
         <FilterBar
           fields={[
             {
-              key: "serialNumber",
+              key: "searchType",
+              type: "select",
+              label: "نوع البحث",
+              options: CARD_SEARCH_TYPE_OPTIONS,
+            },
+            {
+              key: "searchQuery",
               type: "text",
-              label: "الرقم التسلسلي",
-              placeholder: "ابحث بالرقم التسلسلي",
+              label: "بحث",
+              placeholder:
+                CARD_SEARCH_TYPE_PLACEHOLDERS[draftFilters.searchType] ||
+                CARD_SEARCH_TYPE_PLACEHOLDERS.serialNumber,
               colSpan: 2,
             },
             {
@@ -758,8 +978,38 @@ const Cards = () => {
                       <TableCell className="text-sm text-slate-600">
                         {card.tierTitle || "-"}
                       </TableCell>
+                      <TableCell className="text-sm text-slate-700">
+                        {card.buyerName ? (
+                          <div>
+                            <div className="font-semibold">
+                              {card.buyerName}
+                            </div>
+                            {card.buyerPhone && (
+                              <div className="text-xs text-slate-500">
+                                {card.buyerPhone}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
                       <TableCell className="text-left">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                            onClick={() =>
+                              openDialog(
+                                <CardDetailsDialog
+                                  card={card}
+                                  onCancel={closeDialog}
+                                />,
+                              )
+                            }
+                          >
+                            تفاصيل
+                          </button>
                           <button
                             type="button"
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
