@@ -66,6 +66,7 @@ export const getMany = async (req, res) => {
     const {
       userId,
       userQuery,
+      role,
       provider,
       minTotal,
       maxTotal,
@@ -77,16 +78,26 @@ export const getMany = async (req, res) => {
     const { page, limit } = parsePagination(req.query.page, req.query.limit);
 
     const filter = {};
+    const roleFilter =
+      role === "business" || role === "individual" ? { role } : {};
+    const hasUserQuery = Boolean(userQuery && userQuery.trim());
 
     if (userId) {
       if (!Types.ObjectId.isValid(userId)) {
         return res.status(400).json({ code: "ORDER_USER_INVALID" });
       }
       filter.userId = new Types.ObjectId(userId);
-    } else if (userQuery && userQuery.trim()) {
-      const users = await User.find(buildUserSearchFilter(userQuery))
-        .select("_id")
-        .limit(200);
+    } else if (hasUserQuery || Object.keys(roleFilter).length > 0) {
+      let usersQuery = User.find({
+        ...(hasUserQuery ? buildUserSearchFilter(userQuery) : {}),
+        ...roleFilter,
+      }).select("_id");
+      // The 200 cap only guards free-text search; a role filter is a broad
+      // category (roughly half of all users) and must not be truncated.
+      if (hasUserQuery) {
+        usersQuery = usersQuery.limit(200);
+      }
+      const users = await usersQuery;
       const userIds = users.map((user) => user._id);
       if (userIds.length === 0) {
         return res.status(200).json({

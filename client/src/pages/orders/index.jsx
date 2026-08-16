@@ -52,6 +52,11 @@ const ORDER_SORT_OPTIONS = [
   { value: "totalAmount:asc", label: "الأقل قيمة" },
 ];
 
+const ROLE_TABS = [
+  { key: "business", label: "تجاري" },
+  { key: "individual", label: "فردي" },
+];
+
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [totalOrders, setTotalOrders] = useState(0);
@@ -59,6 +64,7 @@ const Orders = () => {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [roleTab, setRoleTab] = useState("business");
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [draftFilters, setDraftFilters] = useState(INITIAL_FILTERS);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -73,6 +79,7 @@ const Orders = () => {
     const params = {
       page,
       limit: ORDERS_PER_PAGE,
+      role: roleTab,
     };
 
     if (sortBy) {
@@ -109,7 +116,7 @@ const Orders = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, sortBy, sortOrder, filters, reloadFlag]);
+  }, [page, sortBy, sortOrder, roleTab, filters, reloadFlag]);
 
   useEffect(() => {
     fetchOrders();
@@ -123,7 +130,7 @@ const Orders = () => {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [page, sortBy, sortOrder, filters]);
+  }, [page, sortBy, sortOrder, roleTab, filters]);
 
   const handleApplyFilters = (event) => {
     event?.preventDefault?.();
@@ -141,6 +148,11 @@ const Orders = () => {
     const [field, direction] = event.target.value.split(":");
     setSortBy(field || "createdAt");
     setSortOrder(direction || "desc");
+    setPage(1);
+  };
+
+  const handleRoleTabSelect = (tabKey) => {
+    setRoleTab(tabKey);
     setPage(1);
   };
 
@@ -271,6 +283,23 @@ const Orders = () => {
               حذف المحدد
             </button>
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {ROLE_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => handleRoleTabSelect(tab.key)}
+              className={`rounded-full px-4 py-2 text-sm transition ${
+                roleTab === tab.key
+                  ? "bg-primary text-white"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <FilterBar
