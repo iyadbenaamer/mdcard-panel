@@ -33,12 +33,14 @@ const CARD_SEARCH_TYPE_OPTIONS = [
   { value: "serialNumber", label: "الرقم التسلسلي" },
   { value: "orderNumber", label: "رقم الطلب" },
   { value: "pin", label: "الرقم السري" },
+  { value: "code", label: "الكود" },
 ];
 
 const CARD_SEARCH_TYPE_PLACEHOLDERS = {
   serialNumber: "ابحث بالرقم التسلسلي",
   orderNumber: "ابحث برقم الطلب الذي بيعت فيه البطاقة",
   pin: "ابحث بالرقم السري للبطاقة",
+  code: "ابحث بكود البطاقة",
 };
 
 const Cards = () => {

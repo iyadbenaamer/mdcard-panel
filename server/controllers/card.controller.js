@@ -187,7 +187,16 @@ export const getPaginated = async (req, res) => {
   }
 };
 
-const CARD_SEARCH_TYPES = new Set(["serialNumber", "orderNumber", "pin"]);
+const CARD_SEARCH_TYPES = new Set([
+  "serialNumber",
+  "orderNumber",
+  "pin",
+  "code",
+]);
+
+// Strips ALL whitespace (not just leading/trailing) so pasted queries with
+// stray or grouping spaces still match: e.g. "1234 5678" -> "12345678".
+const stripWhitespace = (value) => value.replace(/\s+/g, "");
 
 export const getByCategory = async (req, res) => {
   try {
@@ -220,7 +229,7 @@ export const getByCategory = async (req, res) => {
     const sortField = allowedSortFields.has(sortBy) ? sortBy : "serialNumber";
     const sortDirection = sortOrder === "desc" ? -1 : 1;
 
-    const trimmedQuery = searchQuery?.trim();
+    const trimmedQuery = searchQuery ? stripWhitespace(searchQuery) : "";
     const effectiveSearchType = CARD_SEARCH_TYPES.has(searchType)
       ? searchType
       : "serialNumber";
@@ -229,6 +238,11 @@ export const getByCategory = async (req, res) => {
     if (trimmedQuery) {
       if (effectiveSearchType === "pin") {
         matchSearch = { pin: { $regex: escapeRegex(trimmedQuery), $options: "i" } };
+      } else if (effectiveSearchType === "code") {
+        // codeHash is a sha256 of the plaintext code, computed the same way
+        // at write time, so this is an exact-match lookup on an indexed
+        // field instead of decrypting every card's code to compare.
+        matchSearch = { codeHash: hashCardCode(trimmedQuery) };
       } else if (effectiveSearchType === "orderNumber") {
         const cardIds = await resolveCardIdsByOrderQuery(trimmedQuery);
         matchSearch = {
