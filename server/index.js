@@ -21,6 +21,7 @@ import cardTierRoute from "./routes/cardTier.route.js";
 import cardRoute from "./routes/card.route.js";
 import orderRoute from "./routes/order.route.js";
 import transactionRoute from "./routes/transaction.route.js";
+import requestLogRoute from "./routes/requestLog.route.js";
 import settingRoute from "./routes/setting.route.js";
 import dealRoute from "./routes/deal.route.js";
 import connectDB from "./config/db.js";
@@ -75,6 +76,7 @@ app.use("/api/card-tiers", cardTierRoute);
 app.use("/api/cards", cardRoute);
 app.use("/api/orders", orderRoute);
 app.use("/api/transactions", transactionRoute);
+app.use("/api/request-logs", requestLogRoute);
 app.use("/api/settings", settingRoute);
 app.use("/api/deals", dealRoute);
 

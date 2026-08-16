@@ -11,6 +11,7 @@ import UsersIcon from "assets/icons/users.svg?react";
 import CardIcon from "assets/icons/card.svg?react";
 import OrdersIcon from "assets/icons/orders.svg?react";
 import TransactionsIcon from "assets/icons/transactions.svg?react";
+import LogsIcon from "assets/icons/logs.svg?react";
 import SettingsIcon from "assets/icons/settings.svg?react";
 import DealsIcon from "assets/icons/deals.svg?react";
 import LogoutIcon from "assets/icons/logout.svg?react";
@@ -54,6 +55,13 @@ const Sidebar = ({ showLogo = true, onItemClick }) => {
             onClick={onItemClick}
           >
             <TransactionsIcon fill="transparent" />
+          </SidebarItem>
+          <SidebarItem
+            to="/request-logs"
+            name="سجل النشاط"
+            onClick={onItemClick}
+          >
+            <LogsIcon fill="transparent" />
           </SidebarItem>
           <SidebarItem to="/deals" name="العروض الترويجية" onClick={onItemClick}>
             <DealsIcon />

@@ -9,6 +9,7 @@ import NotFound from "pages/NotFound";
 import Users from "pages/users";
 import Orders from "pages/orders";
 import Transactions from "pages/transactions";
+import RequestLogs from "pages/requestLogs";
 
 import PopupMessage from "components/popup-message";
 import { DialogProvider } from "components/dialog/DialogContext";
@@ -83,6 +84,16 @@ const App = () => {
                     element={
                       isLoggedin ? (
                         <Transactions />
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+                  <Route
+                    path="/request-logs"
+                    element={
+                      isLoggedin ? (
+                        <RequestLogs />
                       ) : (
                         <Navigate to="/login" replace />
                       )
