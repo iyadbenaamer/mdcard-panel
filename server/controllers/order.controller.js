@@ -342,6 +342,11 @@ export const getOne = async (req, res) => {
       _id: id,
     }).populate([
       {
+        path: "userId",
+        model: "User",
+        select: "_id name phone",
+      },
+      {
         path: "items.cards",
         model: "Card",
       },
@@ -361,9 +366,18 @@ export const getOne = async (req, res) => {
 
     const orderObj = order.toObject();
     const items = Array.isArray(orderObj.items) ? orderObj.items : [];
+    const user =
+      orderObj.userId && typeof orderObj.userId === "object"
+        ? {
+            _id: orderObj.userId._id,
+            name: orderObj.userId.name,
+            phone: orderObj.userId.phone,
+          }
+        : null;
 
     const payload = {
       _id: orderObj._id,
+      user,
       totalAmount: orderObj.totalAmount,
       createdAt: orderObj.createdAt,
       items: items.map((item) => {
@@ -390,9 +404,10 @@ export const getOne = async (req, res) => {
                   : null,
               }
             : null,
-          title: item?.title,
+          title: tier?.title || item?.title,
           price: item?.price,
           quantity: item?.quantity,
+          provider: item?.provider,
           cards: cards.map((card) => {
             if (!card || typeof card !== "object") {
               return card ? { _id: card } : card;
