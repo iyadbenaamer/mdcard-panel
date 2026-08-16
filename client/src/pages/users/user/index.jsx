@@ -11,6 +11,8 @@ import { useDialog } from "components/dialog/DialogContext";
 import ArrowRightIcon from "assets/icons/arrow-right.svg?react";
 import CustomPricingSection from "./components/CustomPricingSection";
 import FavoritesSection from "./components/FavoritesSection";
+import SessionsSection from "./components/SessionsSection";
+import ApiKeysSection from "./components/ApiKeysSection";
 import UserInfoGrid from "./components/UserInfoGrid";
 import TransactionsSection from "./components/TransactionsSection";
 import DepositDialog from "./components/DepositDialog";
@@ -32,6 +34,7 @@ const buildFormState = (user) => ({
   isActive: resolveBoolean(user?.isActive, false),
   canBuy: resolveBoolean(user?.canBuy, false),
   canSendCode: resolveBoolean(user?.canSendCode, false),
+  canManageApiKeys: resolveBoolean(user?.canManageApiKeys, false),
   isVerified: resolveBoolean(user?.verificationStatus?.isVerified, false),
 });
 
@@ -56,33 +59,33 @@ const User = () => {
   const [transactionsHasMore, setTransactionsHasMore] = useState(false);
   const transactionsLoadMoreRef = useRef(null);
 
+  const fetchUser = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await axiosClient.get("/user", {
+        params: { id },
+      });
+      setUser(response.data.profile);
+      setError("");
+    } catch (err) {
+      setError(
+        getApiErrorMessage(err, "تعذر تحميل بيانات المستخدم. حاول مرة أخرى."),
+      );
+      setUser(null);
+    }
+  }, [id]);
+
   useEffect(() => {
     let isMounted = true;
-    const fetchUser = async () => {
-      if (!id) return;
+    (async () => {
       setIsLoading(true);
-      setError("");
-      try {
-        const response = await axiosClient.get("/user", {
-          params: { id },
-        });
-        if (!isMounted) return;
-        setUser(response.data.profile);
-      } catch (err) {
-        if (!isMounted) return;
-        setError(
-          getApiErrorMessage(err, "تعذر تحميل بيانات المستخدم. حاول مرة أخرى."),
-        );
-        setUser(null);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    fetchUser();
+      await fetchUser();
+      if (isMounted) setIsLoading(false);
+    })();
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [fetchUser]);
 
   useEffect(() => {
     if (!user || isEditing) return;
@@ -214,6 +217,15 @@ const User = () => {
         value: user.canSendCode ? "نعم" : "لا",
         badge: true,
       },
+      ...(user.role === "business"
+        ? [
+            {
+              label: "يمكنه إدارة مفاتيح API الخاصة به",
+              value: user.canManageApiKeys ? "نعم" : "لا",
+              badge: true,
+            },
+          ]
+        : []),
       {
         label: "تاريخ الإنشاء",
         value: user.createdAt ? formatArabicDateTime(user.createdAt) : "—",
@@ -264,6 +276,7 @@ const User = () => {
         isActive: formState.isActive,
         canBuy: formState.canBuy,
         canSendCode: formState.canSendCode,
+        canManageApiKeys: formState.canManageApiKeys,
         verificationStatus: { isVerified: formState.isVerified },
         ...(formState.password ? { password: formState.password } : {}),
       };
@@ -556,6 +569,26 @@ const User = () => {
                       <option value="false">لا</option>
                     </select>
                   </div>
+                  {user.role === "business" && (
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        يمكنه إدارة مفاتيح API الخاصة به
+                      </label>
+                      <select
+                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        value={formState.canManageApiKeys ? "true" : "false"}
+                        onChange={(event) =>
+                          setFormState((prev) => ({
+                            ...prev,
+                            canManageApiKeys: event.target.value === "true",
+                          }))
+                        }
+                      >
+                        <option value="true">نعم</option>
+                        <option value="false">لا</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -564,6 +597,12 @@ const User = () => {
 
             {user.role !== "individual" && (
               <CustomPricingSection userId={user?._id} />
+            )}
+
+            <SessionsSection userId={user?._id} />
+
+            {user.role === "business" && (
+              <ApiKeysSection userId={user?._id} />
             )}
 
             <FavoritesSection userId={user?._id} />

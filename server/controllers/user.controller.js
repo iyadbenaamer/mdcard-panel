@@ -131,7 +131,7 @@ export const getOne = async (req, res) => {
     const { id } = req.query;
 
     const profile = await User.findById(id).select(
-      "name phone role balance isActive canBuy canSendCode verificationStatus createdAt updatedAt",
+      "name phone role balance isActive canBuy canSendCode canManageApiKeys verificationStatus createdAt updatedAt",
     );
     if (!profile) {
       return res.status(404).json({ code: "USER_NOT_FOUND" });
@@ -197,6 +197,7 @@ export const update = async (req, res) => {
       isActive,
       canBuy,
       canSendCode,
+      canManageApiKeys,
     } = req.body;
 
     if (!id) {
@@ -274,6 +275,10 @@ export const update = async (req, res) => {
 
     if (typeof canSendCode === "boolean") {
       user.canSendCode = canSendCode;
+    }
+
+    if (typeof canManageApiKeys === "boolean") {
+      user.canManageApiKeys = canManageApiKeys;
     }
 
     await user.save();
