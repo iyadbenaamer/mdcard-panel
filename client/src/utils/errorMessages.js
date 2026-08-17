@@ -79,6 +79,10 @@ const errorMessages = {
   SETTING_NOT_FOUND: "الإعداد غير موجود.",
   SETTING_ID_INVALID: "معرّف الإعداد غير صالح.",
   SETTING_KEY_PROTECTED: "لا يمكن إنشاء هذا الإعداد.",
+  APP_VERSION_MIN_VERSION_INVALID: "صيغة الحد الأدنى للإصدار غير صحيحة.",
+  APP_VERSION_LATEST_VERSION_INVALID: "صيغة أحدث إصدار غير صحيحة.",
+  APP_VERSION_MIN_EXCEEDS_LATEST: "الحد الأدنى للإصدار لا يمكن أن يكون أكبر من أحدث إصدار.",
+  APP_VERSION_NO_UPDATE_FIELDS: "لم يتم تعديل أي حقول.",
 };
 
 export const getErrorMessageByCode = (code, fallback = "حدث خطأ غير متوقع.") =>

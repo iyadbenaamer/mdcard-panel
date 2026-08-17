@@ -23,6 +23,7 @@ import orderRoute from "./routes/order.route.js";
 import transactionRoute from "./routes/transaction.route.js";
 import requestLogRoute from "./routes/requestLog.route.js";
 import settingRoute from "./routes/setting.route.js";
+import appVersionRoute from "./routes/appVersion.route.js";
 import dealRoute from "./routes/deal.route.js";
 import connectDB from "./config/db.js";
 import { runAutoDeleteJob } from "./utils/autoDelete.js";
@@ -78,6 +79,7 @@ app.use("/api/orders", orderRoute);
 app.use("/api/transactions", transactionRoute);
 app.use("/api/request-logs", requestLogRoute);
 app.use("/api/settings", settingRoute);
+app.use("/api/app-version", appVersionRoute);
 app.use("/api/deals", dealRoute);
 
 /*MONGOOSE SETUP*/

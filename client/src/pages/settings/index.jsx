@@ -4,6 +4,7 @@ import Layout from "layout";
 import LoadingIcon from "assets/icons/loading-circle.svg?react";
 import { useDialog } from "components/dialog/DialogContext";
 import AddSettingDialog from "./components/AddSettingDialog";
+import AppVersionSettings from "./components/AppVersionSettings";
 
 const Settings = () => {
   const [settings, setSettings] = useState([]);
@@ -233,6 +234,8 @@ const Settings = () => {
             )}
           </div>
         </div>
+
+        <AppVersionSettings />
 
         {/* Message */}
         {message && (
