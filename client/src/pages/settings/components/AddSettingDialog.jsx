@@ -12,6 +12,7 @@ const AddSettingDialog = ({ onAdded, onClose }) => {
     "سعر الدولار",
     "مدة الحذف التلقائي بالأيام",
     "autoDeleteDurationDays",
+    "نسبة رسوم تحويل الرصيد",
   ];
 
   const handleSubmit = async () => {
@@ -37,7 +38,7 @@ const AddSettingDialog = ({ onAdded, onClose }) => {
   return (
     <div className="min-w-80 p-4 text-right" dir="rtl">
       <h2 className="text-lg font-semibold text-slate-800">إضافة إعداد جديد</h2>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-slate-600">
         أضف مفتاح، قيمة ووصفًا(اختياري).
       </p>
 
@@ -60,7 +61,7 @@ const AddSettingDialog = ({ onAdded, onClose }) => {
         />
       </div>
 
-      {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
+      {error && <p className="mt-3 text-sm text-rose-700">{error}</p>}
 
       <div className="mt-8 flex items-center justify-end gap-3">
         <button

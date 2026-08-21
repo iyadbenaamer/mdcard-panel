@@ -31,10 +31,25 @@ const isValidAutoDeleteDuration = (value) => {
   return !Number.isNaN(num) && num >= 0;
 };
 
+// Key holding the percentage fee charged to the sender on a balance
+// exchange between two users (see mdcard/server/controllers/exchange.controller.js).
+// 0 means no fee.
+const EXCHANGE_FEE_SETTING_KEY = "نسبة رسوم تحويل الرصيد";
+const isExchangeFeeKey = (key) =>
+  (key ?? "").toString().trim() === EXCHANGE_FEE_SETTING_KEY;
+const isValidExchangeFee = (value) => {
+  if (value === undefined || value === null) return false;
+  const strValue = value.toString().trim();
+  if (!strValue) return false;
+  const num = Number(strValue);
+  return !Number.isNaN(num) && num >= 0 && num <= 100;
+};
+
 const PROTECTED_SETTING_KEYS = [
   "support",
   ...DOLLAR_RATE_KEYS,
   ...AUTO_DELETE_DURATION_KEYS,
+  EXCHANGE_FEE_SETTING_KEY,
 ];
 
 const NUMERIC_KEY_VALIDATORS = [
@@ -49,6 +64,12 @@ const NUMERIC_KEY_VALIDATORS = [
     isValid: isValidAutoDeleteDuration,
     code: "SETTING_AUTO_DELETE_DURATION_VALUE_INVALID",
     message: "Auto-delete duration must be a non-negative number",
+  },
+  {
+    test: isExchangeFeeKey,
+    isValid: isValidExchangeFee,
+    code: "SETTING_EXCHANGE_FEE_VALUE_INVALID",
+    message: "Exchange fee must be a number between 0 and 100",
   },
 ];
 

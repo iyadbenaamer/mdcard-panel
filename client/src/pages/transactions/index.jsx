@@ -11,6 +11,7 @@ import {
 } from "components/Table";
 import RedBtn from "components/RedBtn";
 import FilterBar from "components/FilterBar";
+import Badge from "components/Badge";
 import { useDialog } from "components/dialog/DialogContext";
 import OrderDetailsDialog from "pages/orders/components/OrderDetailsDialog";
 
@@ -87,12 +88,18 @@ const Transactions = () => {
     deposit: "إيداع",
     purchase: "شراء",
     refund: "استرداد",
+    gateway_deposit: "إيداع بوابة دفع",
+    exchange_sent: "تحويل صادر",
+    exchange_received: "تحويل وارد",
   };
 
   const typeStyles = {
-    deposit: "bg-emerald-100 text-emerald-700",
-    purchase: "bg-sky-100 text-sky-700",
+    deposit: "bg-emerald-100 text-emerald-800",
+    purchase: "bg-sky-100 text-sky-800",
     refund: "bg-rose-100 text-rose-700",
+    gateway_deposit: "bg-teal-100 text-teal-800",
+    exchange_sent: "bg-amber-100 text-amber-800",
+    exchange_received: "bg-indigo-100 text-indigo-800",
   };
 
   const formatAmount = (value) => {
@@ -368,12 +375,12 @@ const Transactions = () => {
             <h1 className="text-2xl font-semibold text-slate-800">
               جميع المعاملات
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               إجمالي المعاملات: {totalTransactions}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-600">
               المحدد: {selectedIds.size}
             </span>
             <button
@@ -420,18 +427,18 @@ const Transactions = () => {
         />
 
         {error && (
-          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         )}
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
           {isLoading ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               جاري تحميل المعاملات...
             </div>
           ) : transactions.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               لا توجد معاملات متاحة حاليا.
             </div>
           ) : (
@@ -485,7 +492,7 @@ const Transactions = () => {
                           >
                             <div className="font-semibold">{userName}</div>
                             {userPhone && (
-                              <div className="text-xs text-slate-500">
+                              <div className="text-xs text-slate-600">
                                 {userPhone}
                               </div>
                             )}
@@ -495,11 +502,7 @@ const Transactions = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs ${typeClass}`}
-                        >
-                          {typeLabel}
-                        </span>
+                        <Badge className={typeClass}>{typeLabel}</Badge>
                       </TableCell>
                       <TableCell>{formatAmount(transaction.amount)}</TableCell>
                       <TableCell>

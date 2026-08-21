@@ -13,23 +13,25 @@ const Settings = () => {
   const [editingAll, setEditingAll] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
-  const [keyFilter, setKeyFilter] = useState("");
 
   const AUTO_DELETE_DURATION_KEYS = [
     "مدة الحذف التلقائي بالأيام",
     "autoDeleteDurationDays",
   ];
+  const EXCHANGE_FEE_KEY = "نسبة رسوم تحويل الرصيد";
   const protectedSettings = [
     "support",
     "سعر الدولار",
     "dollarRate",
     ...AUTO_DELETE_DURATION_KEYS,
+    EXCHANGE_FEE_KEY,
   ];
   const isDollarRateKey = (key) => ["سعر الدولار", "dollarRate"].includes(key);
   const isAutoDeleteDurationKey = (key) =>
     AUTO_DELETE_DURATION_KEYS.includes(key);
+  const isExchangeFeeKey = (key) => key === EXCHANGE_FEE_KEY;
   const isNumericSettingKey = (key) =>
-    isDollarRateKey(key) || isAutoDeleteDurationKey(key);
+    isDollarRateKey(key) || isAutoDeleteDurationKey(key) || isExchangeFeeKey(key);
   const isNumericValue = (value) => {
     if (value === null || value === undefined) return false;
     const strValue = String(value).trim();
@@ -80,6 +82,15 @@ const Settings = () => {
           value: null,
           description:
             "عدد الأيام لحذف الكروت المباعة والطلبات والمعاملات تلقائيًا بعد بيعها (0 لتعطيل الخاصية)",
+          _id: null,
+        });
+      }
+      if (!list.find((it) => it.key === EXCHANGE_FEE_KEY)) {
+        list.unshift({
+          key: EXCHANGE_FEE_KEY,
+          value: null,
+          description:
+            "النسبة المئوية للرسوم التي تُخصم من المرسل عند تحويل الرصيد بين المستخدمين (0 لتعطيل الرسوم)",
           _id: null,
         });
       }
@@ -166,6 +177,23 @@ const Settings = () => {
       return;
     }
 
+    const exchangeFeeSetting = settings.find((s) => isExchangeFeeKey(s.key));
+    const exchangeFeeValue = exchangeFeeSetting
+      ? edits[exchangeFeeSetting.key]
+      : undefined;
+    if (
+      exchangeFeeValue !== undefined &&
+      (!isNumericValue(exchangeFeeValue) ||
+        Number(exchangeFeeValue) < 0 ||
+        Number(exchangeFeeValue) > 100)
+    ) {
+      setMessage({
+        type: "error",
+        text: "قيمة رسوم التحويل يجب أن تكون رقمًا بين 0 و 100",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = settings.map((s) => ({
@@ -203,11 +231,6 @@ const Settings = () => {
   };
 
   const hasChanges = useMemo(() => Object.keys(edits).length > 0, [edits]);
-
-  const trimmedKeyFilter = keyFilter.trim().toLowerCase();
-  const visibleSettings = trimmedKeyFilter
-    ? settings.filter((s) => s.key?.toLowerCase().includes(trimmedKeyFilter))
-    : settings;
 
   return (
     <Layout>
@@ -274,18 +297,6 @@ const Settings = () => {
           </div>
         )}
 
-        {!loading && settings.length > 0 && (
-          <div className="mb-6">
-            <input
-              type="text"
-              value={keyFilter}
-              onChange={(event) => setKeyFilter(event.target.value)}
-              placeholder="ابحث بمفتاح الإعداد"
-              className="w-full max-w-sm rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-            />
-          </div>
-        )}
-
         {/* Content */}
         {loading ? (
           <div className="flex flex-col items-center py-20 gap-4 text-gray-500">
@@ -296,13 +307,9 @@ const Settings = () => {
           <div className="text-center py-20 text-gray-400">
             لا توجد إعدادات حاليًا
           </div>
-        ) : visibleSettings.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            لا توجد نتائج مطابقة للبحث
-          </div>
         ) : (
           <div className="grid gap-5">
-            {visibleSettings.map((s) => (
+            {settings.map((s) => (
               <div
                 key={s._id || s.key}
                 className="bg-white rounded-2xl p-6 shadow-sm  hover:shadow-md transition"
