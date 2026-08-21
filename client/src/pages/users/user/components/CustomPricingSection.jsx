@@ -15,6 +15,8 @@ import {
 import { useDialog } from "components/dialog/DialogContext";
 import { formatAmount, formatArabicDateTime, safeValue } from "../utils";
 
+const getDisplayName = (name) => name?.ar || name?.en || "";
+
 // Map backend error codes to user-friendly Arabic messages
 const translateCustomPricingError = (code, fallback) => {
   const map = {
@@ -149,7 +151,7 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
       </h2>
       <div className="mt-4 space-y-3">
         <div>
-          <label className="text-xs text-slate-500">التصنيف</label>
+          <label className="text-xs text-slate-600">التصنيف</label>
           <select
             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             value={categoryId}
@@ -161,13 +163,13 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
             </option>
             {categories.map((category) => (
               <option key={category._id} value={category._id}>
-                {category.name}
+                {getDisplayName(category.name)}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-xs text-slate-500">نوع البطاقة</label>
+          <label className="text-xs text-slate-600">نوع البطاقة</label>
           <select
             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             value={typeId}
@@ -179,13 +181,13 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
             </option>
             {types.map((type) => (
               <option key={type._id} value={type._id}>
-                {type.name}
+                {getDisplayName(type.name)}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-xs text-slate-500">الفئة</label>
+          <label className="text-xs text-slate-600">الفئة</label>
           <select
             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             value={tierId}
@@ -197,7 +199,7 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
             </option>
             {tiers.map((tier) => (
               <option key={tier._id} value={tier._id}>
-                {tier.title || "—"}
+                {getDisplayName(tier.title) || "—"}
               </option>
             ))}
           </select>
@@ -215,13 +217,13 @@ const CreatePricingDialog = ({ userId, onCreate, onCancel }) => {
           onChange={(event) => setBuyPriceUsd(event.target.value)}
           placeholder="اتركه فارغًا إذا لم يكن مطلوبًا"
         />
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-600">
           إذا تم تحديد السعر بالدولار، سيُستخدم هو (مضروبًا في سعر الدولار)
           بدلاً من السعر بالدينار.
         </p>
       </div>
       {dialogError && (
-        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
           {dialogError}
         </div>
       )}
@@ -423,7 +425,7 @@ const CustomPricingSection = ({ userId }) => {
           <h2 className="text-sm font-semibold text-slate-700">
             التسعير المخصص
           </h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-600">
             أسعار خاصة لهذا المستخدم حسب الفئة
           </p>
         </div>
@@ -443,21 +445,21 @@ const CustomPricingSection = ({ userId }) => {
       </div>
 
       {pricingSuccess && (
-        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
+        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
           {pricingSuccess}
         </div>
       )}
 
       {isPricingLoading ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           جاري تحميل التسعير المخصص...
         </div>
       ) : pricingError ? (
-        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-600">
+        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
           {pricingError}
         </div>
       ) : sortedPricingRules.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           لا توجد تسعيرات مخصصة لهذا المستخدم حتى الآن.
         </div>
       ) : (
@@ -467,9 +469,15 @@ const CustomPricingSection = ({ userId }) => {
             <TableBody>
               {sortedPricingRules.map((rule) => (
                 <TableRow key={rule._id}>
-                  <TableCell>{safeValue(rule.categoryName)}</TableCell>
-                  <TableCell>{safeValue(rule.typeName)}</TableCell>
-                  <TableCell>{safeValue(rule.tierTitle)}</TableCell>
+                  <TableCell>
+                    {safeValue(getDisplayName(rule.categoryName) || null)}
+                  </TableCell>
+                  <TableCell>
+                    {safeValue(getDisplayName(rule.typeName) || null)}
+                  </TableCell>
+                  <TableCell>
+                    {safeValue(getDisplayName(rule.tierTitle) || null)}
+                  </TableCell>
                   <TableCell>
                     {rule.buyPrice != null ? formatAmount(rule.buyPrice) : "—"}
                   </TableCell>

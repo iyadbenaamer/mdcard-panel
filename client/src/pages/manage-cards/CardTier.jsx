@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import CustomInput from "components/CustomInput";
 import DateInput from "components/DateInput";
 import PrimaryBtn from "components/PrimaryBtn";
+import Badge from "components/Badge";
 import SubmitBtn from "components/SubmitBtn";
 import RedBtn from "components/RedBtn";
 import FilterBar from "components/FilterBar";
@@ -18,6 +19,19 @@ import axiosClient from "utils/AxiosClient";
 import { useDialog } from "components/dialog/DialogContext";
 import { useBreadcrumb } from "components/breadcrumb/BreadcrumbContext";
 import EyeIcon from "assets/icons/eye.svg?react";
+
+const getDisplayName = (name) => name?.ar || name?.en || "";
+
+const FieldRow = ({ label, span2, children }) => (
+  <div
+    className={`rounded-2xl border border-slate-200 bg-white/80 p-4 ${
+      span2 ? "lg:col-span-2" : ""
+    }`}
+  >
+    <div className="mb-1.5 text-xs text-slate-600">{label}</div>
+    <div className="text-sm text-slate-800">{children}</div>
+  </div>
+);
 
 const CARD_TIER_INITIAL_FILTERS = {
   serialNumber: "",
@@ -53,7 +67,9 @@ const CardTier = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const cardTierId = searchParams.get("cardTierId");
   const cardTypeId = searchParams.get("cardTypeId");
-  const [cardTierTitle, setCardTierTitle] = useState("");
+  const [cardTierTitleAr, setCardTierTitleAr] = useState("");
+  const [cardTierTitleEn, setCardTierTitleEn] = useState("");
+  const cardTierTitle = cardTierTitleAr || cardTierTitleEn;
   const [cardTypeName, setCardTypeName] = useState("");
   const [cardTypeFulfillmentSource, setCardTypeFulfillmentSource] =
     useState("local");
@@ -79,7 +95,8 @@ const CardTier = () => {
   const [editError, setEditError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [importMessage, setImportMessage] = useState("");
-  const [draftTitle, setDraftTitle] = useState("");
+  const [draftTitleAr, setDraftTitleAr] = useState("");
+  const [draftTitleEn, setDraftTitleEn] = useState("");
   const [draftBuyPrice, setDraftBuyPrice] = useState("");
   const [draftBuyPriceUsd, setDraftBuyPriceUsd] = useState("");
   const [draftSellPrice, setDraftSellPrice] = useState("");
@@ -88,10 +105,6 @@ const CardTier = () => {
   const [draftIsActive, setDraftIsActive] = useState(true);
   const { openDialog, closeDialog } = useDialog();
   const { setLevels } = useBreadcrumb();
-  const tableColumns = [
-    { key: "field", label: "الحقل", width: "220px" },
-    { key: "value", label: "القيمة" },
-  ];
   const cardIdsOnPage = cards.map((card) => card._id).filter(Boolean);
   const isAllCardsSelected =
     cardIdsOnPage.length > 0 &&
@@ -160,9 +173,9 @@ const CardTier = () => {
     true: "مباع",
     false: "متاح",
   };
-  const soldStyles = {
-    true: "bg-rose-100 text-rose-700",
-    false: "bg-emerald-100 text-emerald-700",
+  const soldTones = {
+    true: "danger",
+    false: "success",
   };
 
   const toggleCodeVisibility = (cardId) => {
@@ -258,17 +271,27 @@ const CardTier = () => {
         setTier(null);
       } else {
         setTier(found);
-        setCardTierTitle(found.title ?? "");
-        setCardTypeName(typePayload.name ?? payload.name ?? "");
+        setCardTierTitleAr(found.title?.ar ?? "");
+        setCardTierTitleEn(found.title?.en ?? "");
+        setCardTypeName(
+          getDisplayName(typePayload.name) || getDisplayName(payload.name),
+        );
         setCardTypeFulfillmentSource(typePayload.fulfillmentSource ?? "local");
         setLevels([
           { key: "categories", label: "التصنيفات" },
-          { key: "category", label: payload.categoryName ?? "تصنيف" },
-          { key: "cardType", label: payload.name ?? "نوع بطاقة" },
-          { key: "cardTier", label: found.title || "فئة بطاقة" },
+          {
+            key: "category",
+            label: getDisplayName(payload.categoryName) || "تصنيف",
+          },
+          { key: "cardType", label: getDisplayName(payload.name) || "نوع بطاقة" },
+          {
+            key: "cardTier",
+            label: getDisplayName(found.title) || "فئة بطاقة",
+          },
         ]);
         if (!isEditing) {
-          setDraftTitle(found.title ?? "");
+          setDraftTitleAr(found.title?.ar ?? "");
+          setDraftTitleEn(found.title?.en ?? "");
           setDraftBuyPrice(found.buyPrice ?? "");
           setDraftBuyPriceUsd(found.buyPriceUsd ?? "");
           setDraftSellPrice(found.sellPrice ?? "");
@@ -398,7 +421,8 @@ const CardTier = () => {
 
   const handleEditTier = useCallback(
     async ({
-      title,
+      titleAr,
+      titleEn,
       buyPrice,
       buyPriceUsd,
       sellPrice,
@@ -436,7 +460,8 @@ const CardTier = () => {
         await axiosClient.patch(
           "/card-tiers",
           {
-            title: title?.trim() ?? "",
+            titleAr: titleAr?.trim() ?? "",
+            titleEn: titleEn?.trim() ?? "",
             buyPrice:
               buyPrice === "" || buyPrice === null ? null : Number(buyPrice),
             buyPriceUsd:
@@ -476,7 +501,7 @@ const CardTier = () => {
           تريد المتابعة؟
         </p>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -547,7 +572,7 @@ const CardTier = () => {
           />
         </div>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -634,7 +659,7 @@ const CardTier = () => {
           </label>
         </div>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -689,7 +714,7 @@ const CardTier = () => {
           تريد المتابعة؟
         </p>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -733,7 +758,7 @@ const CardTier = () => {
         <h2 className="text-base font-semibold text-slate-800">
           استيراد بطاقات من Excel
         </h2>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-slate-600">
           يجب أن يحتوي الملف على عمود واحد للأكواد فقط.
         </p>
         <div className="mt-4">
@@ -745,7 +770,7 @@ const CardTier = () => {
           />
         </div>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -783,7 +808,8 @@ const CardTier = () => {
     if (!tier) return;
     setSuccessMessage("");
     setImportMessage("");
-    setDraftTitle(tier.title ?? "");
+    setDraftTitleAr(tier.title?.ar ?? "");
+    setDraftTitleEn(tier.title?.en ?? "");
     setDraftBuyPrice(tier.buyPrice ?? "");
     setDraftSellPrice(tier.sellPrice ?? "");
     setDraftBambooProductId(tier.bambooProductId ?? "");
@@ -795,7 +821,8 @@ const CardTier = () => {
 
   const handleEditCancel = () => {
     if (tier) {
-      setDraftTitle(tier.title ?? "");
+      setDraftTitleAr(tier.title?.ar ?? "");
+      setDraftTitleEn(tier.title?.en ?? "");
       setDraftBuyPrice(tier.buyPrice ?? "");
       setDraftSellPrice(tier.sellPrice ?? "");
       setDraftBambooProductId(tier.bambooProductId ?? "");
@@ -812,7 +839,8 @@ const CardTier = () => {
     setIsSaving(true);
     setEditError("");
     const result = await handleEditTier({
-      title: draftTitle,
+      titleAr: draftTitleAr,
+      titleEn: draftTitleEn,
       buyPrice: draftBuyPrice,
       buyPriceUsd: draftBuyPriceUsd,
       sellPrice: draftSellPrice,
@@ -831,7 +859,7 @@ const CardTier = () => {
   const handleOpenDeleteDialog = () => {
     openDialog(
       <DeleteTierDialog
-        tierTitle={tier?.title || "-"}
+        tierTitle={getDisplayName(tier?.title) || "-"}
         onDelete={handleDeleteTier}
         onCancel={closeDialog}
       />,
@@ -1091,174 +1119,152 @@ const CardTier = () => {
       </div>
 
       {editError && (
-        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {editError}
         </div>
       )}
       {successMessage && (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {successMessage}
         </div>
       )}
       {importMessage && (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {importMessage}
         </div>
       )}
 
       {isLoading ? (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-600">
           جاري تحميل التفاصيل...
         </div>
       ) : error ? (
-        <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-600">
+        <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-700">
           {error}
         </div>
       ) : !tier ? (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-600">
           لا توجد تفاصيل للعرض
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <Table columns={tableColumns}>
-              <TableHead columns={tableColumns} />
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-600">
-                    العنوان
-                  </TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <CustomInput
-                        value={draftTitle}
-                        onChange={(event) => setDraftTitle(event.target.value)}
-                      />
-                    ) : (
-                      tier.title || "-"
-                    )}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-600">
-                    سعر الشراء
-                  </TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <CustomInput
-                        type="number"
-                        value={draftBuyPrice}
-                        onChange={(event) =>
-                          setDraftBuyPrice(event.target.value)
-                        }
-                      />
-                    ) : (
-                      tier.buyPrice
-                    )}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-600">
-                    سعر الشراء بالدولار
-                  </TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <CustomInput
-                        type="number"
-                        value={draftBuyPriceUsd}
-                        onChange={(event) =>
-                          setDraftBuyPriceUsd(event.target.value)
-                        }
-                        placeholder="اتركه فارغًا إذا لم يكن مطلوبًا"
-                      />
-                    ) : (
-                      tier.buyPriceUsd || "-"
-                    )}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium text-slate-600">
-                    سعر البيع
-                  </TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <CustomInput
-                        type="number"
-                        value={draftSellPrice}
-                        onChange={(event) =>
-                          setDraftSellPrice(event.target.value)
-                        }
-                      />
-                    ) : (
-                      tier.sellPrice
-                    )}
-                  </TableCell>
-                </TableRow>
-                {cardTypeFulfillmentSource === "bamboo" && (
-                  <>
-                    <TableRow>
-                      <TableCell className="font-medium text-slate-600">
-                        Bamboo Product ID
-                      </TableCell>
-                      <TableCell>
-                        {isEditing ? (
-                          <CustomInput
-                            value={draftBambooProductId}
-                            onChange={(event) =>
-                              setDraftBambooProductId(event.target.value)
-                            }
-                          />
-                        ) : (
-                          tier.bambooProductId || "-"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium text-slate-600">
-                        Bamboo Value
-                      </TableCell>
-                      <TableCell>
-                        {isEditing ? (
-                          <CustomInput
-                            type="number"
-                            value={draftBambooValue}
-                            onChange={(event) =>
-                              setDraftBambooValue(event.target.value)
-                            }
-                          />
-                        ) : (
-                          tier.value ?? "-"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </>
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <FieldRow label="العنوان" span2>
+                {isEditing ? (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <CustomInput
+                      placeholder="عربي"
+                      value={draftTitleAr}
+                      onChange={(event) =>
+                        setDraftTitleAr(event.target.value)
+                      }
+                    />
+                    <CustomInput
+                      placeholder="English"
+                      value={draftTitleEn}
+                      onChange={(event) =>
+                        setDraftTitleEn(event.target.value)
+                      }
+                    />
+                  </div>
+                ) : (
+                  getDisplayName(tier.title) || "-"
                 )}
-                <TableRow>
-                  <TableCell className="font-medium text-slate-600">
-                    الحالة
-                  </TableCell>
-                  <TableCell>
+              </FieldRow>
+
+              <FieldRow label="سعر الشراء">
+                {isEditing ? (
+                  <CustomInput
+                    type="number"
+                    value={draftBuyPrice}
+                    onChange={(event) => setDraftBuyPrice(event.target.value)}
+                  />
+                ) : (
+                  tier.buyPrice
+                )}
+              </FieldRow>
+
+              <FieldRow label="سعر الشراء بالدولار">
+                {isEditing ? (
+                  <CustomInput
+                    type="number"
+                    value={draftBuyPriceUsd}
+                    onChange={(event) =>
+                      setDraftBuyPriceUsd(event.target.value)
+                    }
+                    placeholder="اتركه فارغًا إذا لم يكن مطلوبًا"
+                  />
+                ) : (
+                  tier.buyPriceUsd || "-"
+                )}
+              </FieldRow>
+
+              <FieldRow label="سعر البيع">
+                {isEditing ? (
+                  <CustomInput
+                    type="number"
+                    value={draftSellPrice}
+                    onChange={(event) =>
+                      setDraftSellPrice(event.target.value)
+                    }
+                  />
+                ) : (
+                  tier.sellPrice
+                )}
+              </FieldRow>
+
+              {cardTypeFulfillmentSource === "bamboo" && (
+                <>
+                  <FieldRow label="Bamboo Product ID">
                     {isEditing ? (
-                      <label className="flex items-center gap-2 text-sm text-slate-600">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4"
-                          checked={draftIsActive}
-                          onChange={(event) =>
-                            setDraftIsActive(event.target.checked)
-                          }
-                        />
-                        مفعّل
-                      </label>
-                    ) : tier.isActive ? (
-                      "مفعّل"
+                      <CustomInput
+                        value={draftBambooProductId}
+                        onChange={(event) =>
+                          setDraftBambooProductId(event.target.value)
+                        }
+                      />
                     ) : (
-                      "غير مفعّل"
+                      tier.bambooProductId || "-"
                     )}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+                  </FieldRow>
+
+                  <FieldRow label="Bamboo Value">
+                    {isEditing ? (
+                      <CustomInput
+                        type="number"
+                        value={draftBambooValue}
+                        onChange={(event) =>
+                          setDraftBambooValue(event.target.value)
+                        }
+                      />
+                    ) : (
+                      tier.value ?? "-"
+                    )}
+                  </FieldRow>
+                </>
+              )}
+
+              <FieldRow label="الحالة">
+                {isEditing ? (
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={draftIsActive}
+                      onChange={(event) =>
+                        setDraftIsActive(event.target.checked)
+                      }
+                    />
+                    مفعّل
+                  </label>
+                ) : (
+                  <Badge tone={tier.isActive ? "success" : "neutral"}>
+                    {tier.isActive ? "مفعّل" : "غير مفعّل"}
+                  </Badge>
+                )}
+              </FieldRow>
+            </div>
           </div>
 
           <FilterBar
@@ -1289,15 +1295,15 @@ const CardTier = () => {
               </div>
             </div>
             {isCardsLoading ? (
-              <div className="px-4 py-8 text-center text-sm text-slate-500">
+              <div className="px-4 py-8 text-center text-sm text-slate-600">
                 جاري تحميل البطاقات...
               </div>
             ) : cardsError ? (
-              <div className="px-4 py-8 text-center text-sm text-rose-600">
+              <div className="px-4 py-8 text-center text-sm text-rose-700">
                 {cardsError}
               </div>
             ) : cards.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-slate-500">
+              <div className="px-4 py-8 text-center text-sm text-slate-600">
                 لا توجد بطاقات للعرض
               </div>
             ) : (
@@ -1337,7 +1343,7 @@ const CardTier = () => {
                             </span>
                             <button
                               type="button"
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100"
                               onClick={() => toggleCodeVisibility(card._id)}
                               aria-label={
                                 visibleCodes[card._id]
@@ -1350,13 +1356,9 @@ const CardTier = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <span
-                            className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                              soldStyles[Boolean(card.soldTo)]
-                            }`}
-                          >
+                          <Badge tone={soldTones[Boolean(card.soldTo)]}>
                             {soldLabels[Boolean(card.soldTo)]}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-left">
                           <div className="flex items-center justify-end gap-2">
@@ -1380,7 +1382,7 @@ const CardTier = () => {
                             </button>
                             <button
                               type="button"
-                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
                               onClick={() =>
                                 openDialog(
                                   <DeleteCardDialog

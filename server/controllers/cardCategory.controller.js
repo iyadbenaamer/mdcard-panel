@@ -40,14 +40,18 @@ export const getAll = async (req, res) => {
 
 export const createOne = async (req, res) => {
   try {
-    let { name, order } = req.body;
+    let { nameAr, nameEn, order } = req.body;
 
-    name = name?.trim();
-    if (!name) {
+    nameAr = nameAr?.trim();
+    nameEn = nameEn?.trim();
+    if (!nameAr) {
       return res.status(400).json({ code: "CARD_CATEGORY_NAME_REQUIRED" });
     }
 
-    const cardCategory = new CardCategory({ name, order });
+    const cardCategory = new CardCategory({
+      name: { ar: nameAr, en: nameEn || "" },
+      order,
+    });
 
     await cardCategory.save();
     return res.status(201).json(cardCategory);
@@ -76,12 +80,18 @@ export const updateAll = async (req, res) => {
       }
 
       const update = {};
-      if (item.name !== undefined) {
-        const nextName = item.name?.trim();
-        if (!nextName) {
+      if (item.nameAr !== undefined || item.nameEn !== undefined) {
+        const nextNameAr =
+          item.nameAr !== undefined ? item.nameAr?.trim() : undefined;
+        if (item.nameAr !== undefined && !nextNameAr) {
           return res.status(400).json({ code: "CARD_CATEGORY_NAME_REQUIRED" });
         }
-        update.name = nextName;
+        if (nextNameAr !== undefined) {
+          update["name.ar"] = nextNameAr;
+        }
+        if (item.nameEn !== undefined) {
+          update["name.en"] = item.nameEn?.trim() || "";
+        }
       }
 
       if (item.order !== undefined) {

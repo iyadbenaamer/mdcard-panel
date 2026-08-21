@@ -70,7 +70,8 @@ export const createOne = async (req, res) => {
   try {
     const {
       typeId,
-      title,
+      titleAr,
+      titleEn,
       buyPrice,
       buyPriceUsd,
       sellPrice,
@@ -79,6 +80,11 @@ export const createOne = async (req, res) => {
       isActive,
       order,
     } = req.body;
+
+    const nextTitleAr = titleAr?.trim();
+    if (!nextTitleAr) {
+      return res.status(400).json({ code: "CARD_TIER_TITLE_REQUIRED" });
+    }
 
     const nextBuyPrice =
       buyPrice === undefined || buyPrice === null || buyPrice === ""
@@ -147,7 +153,7 @@ export const createOne = async (req, res) => {
     const tier = new CardTier({
       typeId,
       order: nextOrder,
-      title,
+      title: { ar: nextTitleAr, en: titleEn?.trim() || "" },
       buyPrice: Number.isNaN(nextBuyPrice) ? null : nextBuyPrice,
       buyPriceUsd: Number.isNaN(nextBuyPriceUsd) ? null : nextBuyPriceUsd,
       sellPrice,
@@ -172,7 +178,8 @@ export const updateOne = async (req, res) => {
     const { id } = req.query;
     const {
       typeId,
-      title,
+      titleAr,
+      titleEn,
       buyPrice,
       buyPriceUsd,
       sellPrice,
@@ -223,8 +230,16 @@ export const updateOne = async (req, res) => {
       tier.value = null;
     }
 
-    if (title !== undefined) {
-      tier.title = title;
+    if (titleAr !== undefined || titleEn !== undefined) {
+      const nextTitleAr =
+        titleAr !== undefined ? titleAr?.trim() : tier.title?.ar;
+      if (!nextTitleAr) {
+        return res.status(400).json({ code: "CARD_TIER_TITLE_REQUIRED" });
+      }
+      tier.title = {
+        ar: nextTitleAr,
+        en: titleEn !== undefined ? titleEn?.trim() || "" : tier.title?.en,
+      };
     }
 
     if (buyPrice !== undefined) {

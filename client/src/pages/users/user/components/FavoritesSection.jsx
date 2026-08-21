@@ -10,6 +10,8 @@ import {
 } from "components/Table";
 import { formatArabicDateTime, safeValue } from "../utils";
 
+const getDisplayName = (name) => name?.ar || name?.en || "";
+
 const favoriteColumns = [
   { key: "image", label: "الصورة" },
   { key: "type", label: "نوع البطاقة" },
@@ -55,21 +57,21 @@ const FavoritesSection = ({ userId }) => {
         <h2 className="text-sm font-semibold text-slate-700">
           البطاقات المفضلة
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-600">
           أنواع البطاقات التي اختارها هذا المستخدم كمفضلة من التطبيق
         </p>
       </div>
 
       {isLoading ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           جاري تحميل المفضلة...
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-600">
+        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
           {error}
         </div>
       ) : favorites.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           لا توجد بطاقات مفضلة لهذا المستخدم حتى الآن.
         </div>
       ) : (
@@ -84,15 +86,19 @@ const FavoritesSection = ({ userId }) => {
                       {favorite.cardTypeImage ? (
                         <img
                           src={favorite.cardTypeImage}
-                          alt={favorite.cardTypeName}
+                          alt={getDisplayName(favorite.cardTypeName)}
                           loading="lazy"
                           className="h-full w-full object-cover"
                         />
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell>{safeValue(favorite.cardTypeName)}</TableCell>
-                  <TableCell>{safeValue(favorite.categoryName)}</TableCell>
+                  <TableCell>
+                    {safeValue(getDisplayName(favorite.cardTypeName) || null)}
+                  </TableCell>
+                  <TableCell>
+                    {safeValue(getDisplayName(favorite.categoryName) || null)}
+                  </TableCell>
                   <TableCell>
                     {favorite.createdAt
                       ? formatArabicDateTime(favorite.createdAt)

@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+import Badge from "components/Badge";
+
 const resolveProvider = (items) => {
   if (!Array.isArray(items) || items.length === 0) return "mixed";
   const providers = new Set(
@@ -18,8 +20,8 @@ const providerLabels = {
 };
 
 const providerStyles = {
-  local: "bg-emerald-100 text-emerald-700",
-  bamboo: "bg-amber-100 text-amber-700",
+  local: "bg-emerald-100 text-emerald-800",
+  bamboo: "bg-amber-100 text-amber-800",
   mixed: "bg-slate-100 text-slate-700",
 };
 
@@ -29,13 +31,15 @@ const formatOrderId = (value) => {
   return raw.length > 8 ? raw.slice(-8) : raw;
 };
 
+const getDisplayName = (name) => name?.ar || name?.en || "";
+
 const summarizeItems = (items) => {
   if (!Array.isArray(items) || items.length === 0) return "—";
   const totalQuantity = items.reduce(
     (sum, item) => sum + Number(item?.quantity || 0),
     0,
   );
-  const firstTitle = items[0]?.title || "عنصر";
+  const firstTitle = getDisplayName(items[0]?.title) || "عنصر";
   if (items.length === 1) {
     return `${firstTitle} (${totalQuantity})`;
   }
@@ -105,11 +109,13 @@ const OrderRow = ({
           className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
         />
       </td>
-      <td className="text-center">{index + 1 + (page - 1) * itemsPerPage}</td>
-      <td>
+      <td className="text-center" data-label="ت">
+        {index + 1 + (page - 1) * itemsPerPage}
+      </td>
+      <td data-label="رقم الطلب">
         <span title={order._id}>{formatOrderId(order._id)}</span>
       </td>
-      <td onClick={(event) => event.stopPropagation()}>
+      <td data-label="المستخدم" onClick={(event) => event.stopPropagation()}>
         {order.userId ? (
           <Link
             to={`/users/${order.userId}`}
@@ -117,23 +123,19 @@ const OrderRow = ({
           >
             <div className="font-semibold">{userName}</div>
             {userPhone && (
-              <div className="text-xs text-slate-500">{userPhone}</div>
+              <div className="text-xs text-slate-600">{userPhone}</div>
             )}
           </Link>
         ) : (
           "—"
         )}
       </td>
-      <td>{summarizeItems(order.items)}</td>
-      <td>
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-xs ${providerClass}`}
-        >
-          {providerLabel}
-        </span>
+      <td data-label="العناصر">{summarizeItems(order.items)}</td>
+      <td data-label="المصدر">
+        <Badge className={providerClass}>{providerLabel}</Badge>
       </td>
-      <td>{formatAmount(order.totalAmount)}</td>
-      <td>{formatDateTime(order.createdAt)}</td>
+      <td data-label="الإجمالي">{formatAmount(order.totalAmount)}</td>
+      <td data-label="التاريخ">{formatDateTime(order.createdAt)}</td>
     </tr>
   );
 };

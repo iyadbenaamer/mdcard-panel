@@ -226,7 +226,10 @@ export const getByCategory = async (req, res) => {
       "typeName",
       "tierTitle",
     ]);
-    const sortField = allowedSortFields.has(sortBy) ? sortBy : "serialNumber";
+    const sortFieldMap = { typeName: "typeName.ar", tierTitle: "tierTitle.ar" };
+    const sortField = allowedSortFields.has(sortBy)
+      ? (sortFieldMap[sortBy] ?? sortBy)
+      : "serialNumber";
     const sortDirection = sortOrder === "desc" ? -1 : 1;
 
     const trimmedQuery = searchQuery ? stripWhitespace(searchQuery) : "";

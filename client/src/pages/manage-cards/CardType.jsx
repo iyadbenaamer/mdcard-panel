@@ -14,14 +14,31 @@ import {
   TableHead,
   TableRow,
 } from "components/Table";
+import Badge from "components/Badge";
+import Alert from "components/Alert";
 import axiosClient from "utils/AxiosClient";
 import { useDialog } from "components/dialog/DialogContext";
 import { useBreadcrumb } from "components/breadcrumb/BreadcrumbContext";
 
+const InfoField = ({ label, span2, children }) => (
+  <div
+    className={`rounded-2xl border border-slate-200 bg-white/80 p-4 ${
+      span2 ? "sm:col-span-2" : ""
+    }`}
+  >
+    <div className="text-xs text-slate-600">{label}</div>
+    <div className="mt-2 text-sm text-slate-800">{children}</div>
+  </div>
+);
+
+const getDisplayName = (name) => name?.ar || name?.en || "";
+
 const CardType = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const typeId = searchParams.get("cardTypeId");
-  const [cardTypeName, setCardTypeName] = useState("");
+  const [cardTypeNameAr, setCardTypeNameAr] = useState("");
+  const [cardTypeNameEn, setCardTypeNameEn] = useState("");
+  const cardTypeName = cardTypeNameAr || cardTypeNameEn;
   const [categoryName, setCategoryName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [draftCategoryId, setDraftCategoryId] = useState("");
@@ -58,7 +75,8 @@ const CardType = () => {
         params: { id: typeId },
       });
       const data = response.data ?? {};
-      setCardTypeName(data.name ?? "");
+      setCardTypeNameAr(data.name?.ar ?? "");
+      setCardTypeNameEn(data.name?.en ?? "");
       setCategoryId(data.categoryId ?? "");
       setDraftCategoryId(data.categoryId ?? "");
       setCardTypeImage(data.image ?? "");
@@ -74,7 +92,7 @@ const CardType = () => {
         // Keep existing levels but update the last one
         const newLevels = [...prev];
         if (newLevels.length > 2) {
-          newLevels[2].label = data.name ?? "نوع بطاقة";
+          newLevels[2].label = getDisplayName(data.name) || "نوع بطاقة";
         }
         return newLevels;
       });
@@ -113,11 +131,17 @@ const CardType = () => {
         // /card-tiers returns { name, categoryName, tiers: [] }
         // We can still use it for categoryName and breadcrumb init
         if (payload.categoryName) {
-          setCategoryName(payload.categoryName);
+          setCategoryName(getDisplayName(payload.categoryName));
           setLevels([
             { key: "categories", label: "التصنيفات" },
-            { key: "category", label: payload.categoryName ?? "تصنيف" },
-            { key: "cardType", label: payload.name ?? "نوع بطاقة" },
+            {
+              key: "category",
+              label: getDisplayName(payload.categoryName) || "تصنيف",
+            },
+            {
+              key: "cardType",
+              label: getDisplayName(payload.name) || "نوع بطاقة",
+            },
           ]);
         }
 
@@ -150,7 +174,9 @@ const CardType = () => {
       return;
     }
     setCategoryName(
-      categories.find((item) => item._id === categoryId)?.name ?? "",
+      getDisplayName(
+        categories.find((item) => item._id === categoryId)?.name,
+      ),
     );
   }, [categoryId, categories]);
 
@@ -167,7 +193,9 @@ const CardType = () => {
     : tiers.filter((tierItem) => {
         const matchesTitle =
           !trimmedTierTitleFilter ||
-          tierItem.title?.toLowerCase().includes(trimmedTierTitleFilter);
+          getDisplayName(tierItem.title)
+            .toLowerCase()
+            .includes(trimmedTierTitleFilter);
         const matchesStatus =
           !tierStatusFilter ||
           (tierStatusFilter === "active"
@@ -240,7 +268,8 @@ const CardType = () => {
     try {
       // Update card type fields (name, image, isActive)
       const formData = new FormData();
-      formData.append("name", cardTypeName.trim());
+      formData.append("nameAr", cardTypeNameAr.trim());
+      formData.append("nameEn", (cardTypeNameEn || "").trim());
       formData.append("categoryId", draftCategoryId || categoryId);
       formData.append("isActive", String(cardTypeIsActive));
       formData.append("redeemFormat", (redeemFormat || "").trim());
@@ -284,7 +313,8 @@ const CardType = () => {
 
   const handleCreateTier = useCallback(
     async ({
-      title,
+      titleAr,
+      titleEn,
       buyPrice,
       buyPriceUsd,
       sellPrice,
@@ -321,7 +351,8 @@ const CardType = () => {
       try {
         await axiosClient.post("/card-tiers", {
           typeId,
-          title: title?.trim() ?? "",
+          titleAr: titleAr?.trim() ?? "",
+          titleEn: titleEn?.trim() ?? "",
           buyPrice:
             buyPrice === "" || buyPrice === null ? null : Number(buyPrice),
           buyPriceUsd:
@@ -347,7 +378,8 @@ const CardType = () => {
   );
 
   const CreateTierDialog = ({ onCreate, onCancel }) => {
-    const [title, setTitle] = useState("");
+    const [titleAr, setTitleAr] = useState("");
+    const [titleEn, setTitleEn] = useState("");
     const [buyPrice, setBuyPrice] = useState("");
     const [buyPriceUsd, setBuyPriceUsd] = useState("");
     const [sellPrice, setSellPrice] = useState("");
@@ -365,9 +397,14 @@ const CardType = () => {
         <div className="mt-4 space-y-3">
           <CustomInput
             autoFocus
-            label="العنوان"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
+            label="العنوان (عربي)"
+            value={titleAr}
+            onChange={(event) => setTitleAr(event.target.value)}
+          />
+          <CustomInput
+            label="العنوان (إنجليزي، اختياري)"
+            value={titleEn}
+            onChange={(event) => setTitleEn(event.target.value)}
           />
           <CustomInput
             label="سعر الشراء"
@@ -416,7 +453,7 @@ const CardType = () => {
           </label>
         </div>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -434,7 +471,8 @@ const CardType = () => {
               setIsSubmitting(true);
               setDialogError("");
               const result = await onCreate({
-                title,
+                titleAr,
+                titleEn,
                 buyPrice,
                 buyPriceUsd,
                 sellPrice,
@@ -509,7 +547,7 @@ const CardType = () => {
           تريد المتابعة؟
         </p>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -550,7 +588,7 @@ const CardType = () => {
           <h1 className="text-2xl font-semibold text-slate-800">
             تفاصيل نوع البطاقة
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-600">
             إجمالي الفئات: {totalTiers}
           </p>
         </div>
@@ -592,11 +630,11 @@ const CardType = () => {
         )}
       </div>
       {/* CardType fields display or edit */}
-      <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="p-6 md:p-8">
-          <div className="flex gap-8">
+          <div className="flex flex-col gap-8 md:flex-row md:items-start">
             {/* Image Column */}
-            <div className="order-first md:order-last max-w-3xs">
+            <div className="mx-auto w-full max-w-56 shrink-0 md:order-last md:mx-0">
               {isEditing ? (
                 <ImageUpload
                   value={draftImageFile}
@@ -615,7 +653,7 @@ const CardType = () => {
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <div className="flex flex-col items-center gap-2 text-slate-600">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-8 w-8 opacity-50"
@@ -645,190 +683,166 @@ const CardType = () => {
                     className="aspect-square h-auto w-full"
                   />
                 ) : cardTypePrintImage ? (
-                  <div className="mt-3">
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-2">
                     <img
                       src={cardTypePrintImage}
                       alt={cardTypeName + " print"}
                       loading="lazy"
-                      className="h-24 w-full object-contain"
+                      className="h-12 w-12 shrink-0 rounded-lg object-contain"
                     />
+                    <span className="text-xs text-slate-600">
+                      صورة الطباعة
+                    </span>
                   </div>
                 ) : null}
               </div>
             </div>
 
             {/* Info Column */}
-            <div className="flex flex-col gap-6">
-              {/* Category Field */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-500">
-                  التصنيف
-                </label>
-                {isEditing ? (
-                  <select
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
-                    value={draftCategoryId}
-                    onChange={(event) => {
-                      setDraftCategoryId(event.target.value);
-                    }}
-                  >
-                    <option value="" disabled>
-                      اختر التصنيف
-                    </option>
-                    {categories.map((category) => (
-                      <option key={category._id} value={category._id}>
-                        {category.name}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+                {cardTypeName}
+              </h1>
+
+              {isEditing ? (
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
+                      اسم نوع البطاقة
+                    </label>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <CustomInput
+                        value={cardTypeNameAr}
+                        onChange={(e) => setCardTypeNameAr(e.target.value)}
+                        placeholder="أدخل اسم نوع البطاقة (عربي)"
+                      />
+                      <CustomInput
+                        value={cardTypeNameEn}
+                        onChange={(e) => setCardTypeNameEn(e.target.value)}
+                        placeholder="أدخل اسم نوع البطاقة (إنجليزي، اختياري)"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
+                      التصنيف
+                    </label>
+                    <select
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                      value={draftCategoryId}
+                      onChange={(event) => {
+                        setDraftCategoryId(event.target.value);
+                      }}
+                    >
+                      <option value="" disabled>
+                        اختر التصنيف
                       </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="text-lg font-medium text-slate-700">
-                    {categoryName || <span className="text-slate-400">-</span>}
+                      {categories.map((category) => (
+                        <option key={category._id} value={category._id}>
+                          {getDisplayName(category.name)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                )}
-              </div>
 
-              {/* Name Field */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-500">
-                  اسم نوع البطاقة
-                </label>
-                {isEditing ? (
-                  <CustomInput
-                    value={cardTypeName}
-                    onChange={(e) => setCardTypeName(e.target.value)}
-                    placeholder="أدخل اسم نوع البطاقة"
-                  />
-                ) : (
-                  <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-                    {cardTypeName}
-                  </h1>
-                )}
-              </div>
-
-              {/* Redeem Format Field */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-500">
-                  صيغة التعبئة (اختياري)
-                </label>
-                {isEditing ? (
-                  <CustomInput
-                    value={redeemFormat}
-                    onChange={(e) => setRedeemFormat(e.target.value)}
-                    dir="ltr"
-                    placeholder="مثال: *121*{code}#"
-                  />
-                ) : (
-                  <div className="text-sm text-slate-700">
-                    {redeemFormat || <span className="text-slate-400">-</span>}
-                  </div>
-                )}
-              </div>
-
-              {/* Notes Field */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-500">
-                  ملاحظات (اختياري)
-                </label>
-                {isEditing ? (
-                  <textarea
-                    value={cardTypeNotes}
-                    onChange={(e) => setCardTypeNotes(e.target.value)}
-                    placeholder="أضف ملاحظات عن نوع البطاقة..."
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                    rows="3"
-                  />
-                ) : (
-                  <div className="text-sm text-slate-700">
-                    {cardTypeNotes || <span className="text-slate-400">-</span>}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-500">
-                  المصدر
-                </label>
-                {isEditing ? (
-                  <select
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
-                    value={cardTypeFulfillmentSource}
-                    onChange={(event) =>
-                      setCardTypeFulfillmentSource(event.target.value)
-                    }
-                  >
-                    <option value="local">محلي</option>
-                    <option value="bamboo">Bamboo</option>
-                  </select>
-                ) : (
-                  <div className="text-sm text-slate-700">
-                    {cardTypeFulfillmentSource === "bamboo" ? "Bamboo" : "محلي"}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-500">
-                  تاريخ انتهاء الصلاحية
-                </label>
-                {isEditing ? (
-                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={cardTypeShowExpiryDateDay}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
+                      المصدر
+                    </label>
+                    <select
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                      value={cardTypeFulfillmentSource}
                       onChange={(event) =>
-                        setCardTypeShowExpiryDateDay(event.target.checked)
+                        setCardTypeFulfillmentSource(event.target.value)
                       }
-                      className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
-                    />
-                    <span>إظهار اليوم في تاريخ انتهاء الصلاحية</span>
-                  </label>
-                ) : (
-                  <div className="text-sm text-slate-700">
-                    {cardTypeShowExpiryDateDay ? "يظهر اليوم" : "شهر/سنة فقط"}
+                    >
+                      <option value="local">محلي</option>
+                      <option value="bamboo">Bamboo</option>
+                    </select>
                   </div>
-                )}
-              </div>
 
-              {/* Status Field */}
-              <div className="pt-2">
-                {isEditing ? (
-                  <div className="flex items-center gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
+                      صيغة التعبئة (اختياري)
+                    </label>
+                    <CustomInput
+                      value={redeemFormat}
+                      onChange={(e) => setRedeemFormat(e.target.value)}
+                      dir="ltr"
+                      placeholder="مثال: *121*{code}#"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
+                      تاريخ انتهاء الصلاحية
+                    </label>
+                    <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={cardTypeShowExpiryDateDay}
+                        onChange={(event) =>
+                          setCardTypeShowExpiryDateDay(event.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                      />
+                      <span>إظهار اليوم في تاريخ انتهاء الصلاحية</span>
+                    </label>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-sm font-medium text-slate-600">
+                      ملاحظات (اختياري)
+                    </label>
+                    <textarea
+                      value={cardTypeNotes}
+                      onChange={(e) => setCardTypeNotes(e.target.value)}
+                      placeholder="أضف ملاحظات عن نوع البطاقة..."
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                      rows="3"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
                     <ToggleSwitch
                       label="الحالة"
                       checked={cardTypeIsActive}
                       onChange={setCardTypeIsActive}
                     />
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-500">الحالة:</span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
-                        cardTypeIsActive
-                          ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
-                          : "bg-slate-50 text-slate-600 ring-slate-500/10"
-                      }`}
-                    >
-                      <span
-                        className={`mr-1.5 h-1.5 w-1.5 rounded-full ${
-                          cardTypeIsActive ? "bg-emerald-600" : "bg-slate-400"
-                        }`}
-                      ></span>
+                </div>
+              ) : (
+                <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                  <InfoField label="التصنيف">
+                    {categoryName || <span className="text-slate-600">-</span>}
+                  </InfoField>
+                  <InfoField label="المصدر">
+                    {cardTypeFulfillmentSource === "bamboo" ? "Bamboo" : "محلي"}
+                  </InfoField>
+                  <InfoField label="صيغة التعبئة (اختياري)">
+                    {redeemFormat || <span className="text-slate-600">-</span>}
+                  </InfoField>
+                  <InfoField label="تاريخ انتهاء الصلاحية">
+                    {cardTypeShowExpiryDateDay ? "يظهر اليوم" : "شهر/سنة فقط"}
+                  </InfoField>
+                  <InfoField label="ملاحظات (اختياري)" span2>
+                    {cardTypeNotes || <span className="text-slate-600">-</span>}
+                  </InfoField>
+                  <InfoField label="الحالة">
+                    <Badge tone={cardTypeIsActive ? "success" : "neutral"}>
                       {cardTypeIsActive ? "مفعّل" : "غير مفعّل"}
-                    </span>
-                  </div>
-                )}
-              </div>
+                    </Badge>
+                  </InfoField>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-      {successMessage && (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
-          {successMessage}
-        </div>
-      )}
+      <Alert tone="success" className="mt-4">
+        {successMessage}
+      </Alert>
       <h1 className="mt-4 text-2xl font-semibold text-slate-800">الفئات</h1>
 
       {!isEditing && (
@@ -858,7 +872,7 @@ const CardType = () => {
 
       <div className="mt-4 mb-0 mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="px-4 py-10 text-center text-sm text-slate-500">
+          <div className="px-4 py-10 text-center text-sm text-slate-600">
             جاري تحميل فئات البطاقة...
           </div>
         ) : error ? (
@@ -866,7 +880,7 @@ const CardType = () => {
             {error}
           </div>
         ) : activeList.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-slate-500">
+          <div className="px-4 py-8 text-center text-sm text-slate-600">
             لا توجد فئات متاحة
           </div>
         ) : (
@@ -905,7 +919,7 @@ const CardType = () => {
                 >
                   <TableCell className="text-slate-600">{index + 1}</TableCell>
                   <TableCell className="truncate text-slate-600">
-                    {tier.title || "-"}
+                    {getDisplayName(tier.title) || "-"}
                   </TableCell>
                   <TableCell className="text-slate-600">
                     {tier.buyPrice}
@@ -916,7 +930,7 @@ const CardType = () => {
                   <TableCell className="text-slate-600">
                     {tier.sellPrice}
                   </TableCell>
-                  <TableCell className="text-left text-slate-400">
+                  <TableCell className="text-left text-slate-600">
                     {isEditing && (
                       <span className="cursor-move select-none">⋮⋮</span>
                     )}

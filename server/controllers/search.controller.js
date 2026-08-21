@@ -49,7 +49,7 @@ const buildCardTypeSearchFilter = (searchTerm) => {
   const orConditions = [];
   for (const p of patterns) {
     const regex = new RegExp(p, "i");
-    orConditions.push({ name: regex });
+    orConditions.push({ "name.ar": regex }, { "name.en": regex });
   }
 
   return orConditions.length > 0 ? { $or: orConditions } : {};
@@ -134,7 +134,10 @@ export const searchCards = async (req, res) => {
       "typeName",
       "tierTitle",
     ]);
-    const sortField = allowedSortFields.has(sortBy) ? sortBy : "serialNumber";
+    const sortFieldMap = { typeName: "typeName.ar", tierTitle: "tierTitle.ar" };
+    const sortField = allowedSortFields.has(sortBy)
+      ? (sortFieldMap[sortBy] ?? sortBy)
+      : "serialNumber";
     const sortDirection = sortOrder === "desc" ? -1 : 1;
 
     const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

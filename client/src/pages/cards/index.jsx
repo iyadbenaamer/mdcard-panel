@@ -10,6 +10,7 @@ import {
 } from "components/Table";
 import CustomInput from "components/CustomInput";
 import DateInput from "components/DateInput";
+import Badge from "components/Badge";
 import SubmitBtn from "components/SubmitBtn";
 import RedBtn from "components/RedBtn";
 import FilterBar from "components/FilterBar";
@@ -19,6 +20,8 @@ import axiosClient from "utils/AxiosClient";
 import { useDialog } from "components/dialog/DialogContext";
 
 import EyeIcon from "assets/icons/eye.svg?react";
+
+const getDisplayName = (name) => name?.ar || name?.en || "";
 
 const CARD_INITIAL_FILTERS = {
   searchType: "serialNumber",
@@ -65,9 +68,9 @@ const Cards = () => {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const { openDialog, closeDialog } = useDialog();
 
-  const soldStyles = {
-    true: "bg-rose-100 text-rose-700",
-    false: "bg-emerald-100 text-emerald-700",
+  const soldTones = {
+    true: "danger",
+    false: "success",
   };
   const soldLabels = {
     true: "مباع",
@@ -376,7 +379,7 @@ const Cards = () => {
           </label>
         </div>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -431,7 +434,7 @@ const Cards = () => {
           تريد المتابعة؟
         </p>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -520,15 +523,11 @@ const Cards = () => {
           <h2 className="text-base font-semibold text-slate-800">
             تفاصيل البطاقة
           </h2>
-          <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs ${soldStyles[isSold]}`}
-          >
-            {soldLabels[isSold]}
-          </span>
+          <Badge tone={soldTones[isSold]}>{soldLabels[isSold]}</Badge>
         </div>
 
         {isLoading ? (
-          <div className="mt-6 py-6 text-center text-sm text-slate-500">
+          <div className="mt-6 py-6 text-center text-sm text-slate-600">
             جاري تحميل التفاصيل...
           </div>
         ) : !details ? (
@@ -538,14 +537,14 @@ const Cards = () => {
         ) : (
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">الرقم التسلسلي</span>
+              <span className="text-slate-600">الرقم التسلسلي</span>
               <span className="font-mono text-slate-800" dir="ltr">
                 {renderSerialNumber(details.serialNumber)}
               </span>
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">الكود</span>
+              <span className="text-slate-600">الكود</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-slate-800" dir="ltr">
                   {isCodeVisible
@@ -554,7 +553,7 @@ const Cards = () => {
                 </span>
                 <button
                   type="button"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100"
                   onClick={() => setIsCodeVisible((prev) => !prev)}
                   aria-label={isCodeVisible ? "إخفاء الكود" : "إظهار الكود"}
                 >
@@ -564,22 +563,26 @@ const Cards = () => {
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">الرقم السري (PIN)</span>
+              <span className="text-slate-600">الرقم السري (PIN)</span>
               <span className="text-slate-800">{details.pin || "-"}</span>
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">نوع البطاقة</span>
-              <span className="text-slate-800">{details.typeName || "-"}</span>
+              <span className="text-slate-600">نوع البطاقة</span>
+              <span className="text-slate-800">
+                {getDisplayName(details.typeName) || "-"}
+              </span>
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">الفئة</span>
-              <span className="text-slate-800">{details.tierTitle || "-"}</span>
+              <span className="text-slate-600">الفئة</span>
+              <span className="text-slate-800">
+                {getDisplayName(details.tierTitle) || "-"}
+              </span>
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">تاريخ انتهاء الصلاحية</span>
+              <span className="text-slate-600">تاريخ انتهاء الصلاحية</span>
               <span className="text-slate-800">
                 {details.expiryDate
                   ? String(details.expiryDate).slice(0, 10)
@@ -588,7 +591,7 @@ const Cards = () => {
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">تاريخ الإضافة</span>
+              <span className="text-slate-600">تاريخ الإضافة</span>
               <span className="text-slate-800">
                 {details.createdAt
                   ? String(details.createdAt).slice(0, 10)
@@ -599,13 +602,13 @@ const Cards = () => {
             {isSold && (
               <>
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-500">المشتري</span>
+                  <span className="text-slate-600">المشتري</span>
                   <div className="text-left">
                     <div className="text-slate-800">
                       {details.buyerName || "-"}
                     </div>
                     {details.buyerPhone && (
-                      <div className="text-xs text-slate-500" dir="ltr">
+                      <div className="text-xs text-slate-600" dir="ltr">
                         {details.buyerPhone}
                       </div>
                     )}
@@ -613,7 +616,7 @@ const Cards = () => {
                 </div>
 
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-500">تاريخ البيع</span>
+                  <span className="text-slate-600">تاريخ البيع</span>
                   <span className="text-slate-800">
                     {details.soldAt
                       ? String(details.soldAt).slice(0, 10)
@@ -639,7 +642,7 @@ const Cards = () => {
             )}
 
             {dialogError && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
                 {dialogError}
               </div>
             )}
@@ -772,12 +775,12 @@ const Cards = () => {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-slate-800">البطاقات</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               جميع البطاقات المتاحة حسب التصنيف
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-600">
               المحدد: {selectedIds.size}
             </span>
             <button
@@ -793,7 +796,7 @@ const Cards = () => {
 
         <div className="mt-4 flex flex-wrap items-center justify-end gap-4 px-1">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500">الفرز حسب</span>
+            <span className="text-sm text-slate-600">الفرز حسب</span>
             <select
               className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
               value={sortBy}
@@ -810,7 +813,7 @@ const Cards = () => {
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500">الترتيب</span>
+            <span className="text-sm text-slate-600">الترتيب</span>
             <select
               className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
               value={sortOrder}
@@ -823,7 +826,7 @@ const Cards = () => {
               <option value="desc">تنازلي</option>
             </select>
           </div>
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-slate-600">
             إجمالي البطاقات: {totalCards}
           </div>
         </div>
@@ -851,7 +854,10 @@ const Cards = () => {
               label: "نوع البطاقة",
               options: [
                 { value: "", label: "الكل" },
-                ...types.map((type) => ({ value: type._id, label: type.name })),
+                ...types.map((type) => ({
+                  value: type._id,
+                  label: getDisplayName(type.name),
+                })),
               ],
             },
             {
@@ -878,11 +884,11 @@ const Cards = () => {
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-100 bg-slate-50 px-4 py-3">
             {isLoadingCategories ? (
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-slate-600">
                 جاري تحميل التصنيفات...
               </span>
             ) : categories.length === 0 ? (
-              <span className="text-sm text-slate-500">لا توجد تصنيفات</span>
+              <span className="text-sm text-slate-600">لا توجد تصنيفات</span>
             ) : (
               categories.map((category) => (
                 <button
@@ -895,7 +901,7 @@ const Cards = () => {
                   }`}
                   onClick={() => handleCategorySelect(category._id)}
                 >
-                  {category.name}
+                  {getDisplayName(category.name)}
                 </button>
               ))
             )}
@@ -906,11 +912,11 @@ const Cards = () => {
               {error}
             </div>
           ) : isLoadingCards ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-500">
+            <div className="px-4 py-10 text-center text-sm text-slate-600">
               جاري تحميل البطاقات...
             </div>
           ) : cards.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               لا توجد بطاقات للعرض
             </div>
           ) : (
@@ -953,7 +959,7 @@ const Cards = () => {
                           </span>
                           <button
                             type="button"
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100"
                             onClick={() => toggleCodeVisibility(card._id)}
                             aria-label={
                               visibleCodes[card._id]
@@ -966,19 +972,15 @@ const Cards = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-slate-700">
-                        {card.typeName || "-"}
+                        {getDisplayName(card.typeName) || "-"}
                       </TableCell>
                       <TableCell className="text-center">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                            soldStyles[Boolean(card.isSold)]
-                          }`}
-                        >
+                        <Badge tone={soldTones[Boolean(card.isSold)]}>
                           {soldLabels[Boolean(card.isSold)]}
-                        </span>
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-slate-600">
-                        {card.tierTitle || "-"}
+                        {getDisplayName(card.tierTitle) || "-"}
                       </TableCell>
                       <TableCell className="text-sm text-slate-700">
                         {card.buyerName ? (
@@ -987,7 +989,7 @@ const Cards = () => {
                               {card.buyerName}
                             </div>
                             {card.buyerPhone && (
-                              <div className="text-xs text-slate-500">
+                              <div className="text-xs text-slate-600">
                                 {card.buyerPhone}
                               </div>
                             )}
@@ -1032,7 +1034,7 @@ const Cards = () => {
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
                             onClick={() =>
                               openDialog(
                                 <DeleteCardDialog

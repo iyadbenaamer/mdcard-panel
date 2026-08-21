@@ -13,6 +13,8 @@ import TrashIcon from "assets/icons/trash-basket.svg?react";
 import ToggleSwitch from "components/ToggleSwitch";
 import ImageUpload from "components/ImageUpload";
 
+const getDisplayName = (name) => name?.ar || name?.en || "";
+
 const Category = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryId = searchParams.get("categoryId");
@@ -51,10 +53,10 @@ const Category = () => {
           ? payload.cardTypes
           : [];
         setCardTypes(nextCardTypes);
-        setCategoryName(payload.name ?? "");
+        setCategoryName(getDisplayName(payload.name));
         setLevels([
           { key: "categories", label: "التصنيفات" },
-          { key: "category", label: payload.name ?? "تصنيف" },
+          { key: "category", label: getDisplayName(payload.name) || "تصنيف" },
         ]);
         if (!isEditing && !skipDraft) {
           setDraftCardTypes(nextCardTypes);
@@ -87,7 +89,9 @@ const Category = () => {
     : cardTypes.filter((type) => {
         const matchesName =
           !trimmedNameFilter ||
-          type.name?.toLowerCase().includes(trimmedNameFilter);
+          getDisplayName(type.name)
+            .toLowerCase()
+            .includes(trimmedNameFilter);
         const matchesStatus =
           !statusFilter ||
           (statusFilter === "active" ? type.isActive : !type.isActive);
@@ -188,23 +192,26 @@ const Category = () => {
 
   const handleCreateType = useCallback(
     async ({
-      name,
+      nameAr,
+      nameEn,
       image,
       printImage,
       redeemFormat,
       isActive,
       fulfillmentSource,
     }) => {
-      const trimmed = name.trim();
-      if (!trimmed) {
-        return { ok: false, error: "اسم نوع البطاقة مطلوب." };
+      const trimmedAr = nameAr.trim();
+      const trimmedEn = nameEn.trim();
+      if (!trimmedAr) {
+        return { ok: false, error: "اسم نوع البطاقة (عربي) مطلوب." };
       }
       if (!categoryId) {
         return { ok: false, error: "تعذر تحديد التصنيف." };
       }
       try {
         const formData = new FormData();
-        formData.append("name", trimmed);
+        formData.append("nameAr", trimmedAr);
+        formData.append("nameEn", trimmedEn);
         formData.append("categoryId", categoryId);
         formData.append("order", String(cardTypes.length + 1));
         formData.append("isActive", String(isActive));
@@ -230,7 +237,8 @@ const Category = () => {
   );
 
   const CreateTypeDialog = ({ onCreate, onCancel }) => {
-    const [name, setName] = useState("");
+    const [nameAr, setNameAr] = useState("");
+    const [nameEn, setNameEn] = useState("");
     const [image, setImage] = useState(null);
     const [printImage, setPrintImage] = useState(null);
     const [redeemFormat, setRedeemFormat] = useState("");
@@ -247,9 +255,14 @@ const Category = () => {
         <div className="mt-4 space-y-3">
           <CustomInput
             autoFocus
-            label="اسم النوع"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+            label="اسم النوع (عربي)"
+            value={nameAr}
+            onChange={(event) => setNameAr(event.target.value)}
+          />
+          <CustomInput
+            label="اسم النوع (إنجليزي، اختياري)"
+            value={nameEn}
+            onChange={(event) => setNameEn(event.target.value)}
           />
           <div className="flex gap-2">
             <ImageUpload
@@ -289,7 +302,7 @@ const Category = () => {
           />
         </div>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -307,7 +320,8 @@ const Category = () => {
               setIsSubmitting(true);
               setDialogError("");
               const result = await onCreate({
-                name,
+                nameAr,
+                nameEn,
                 image,
                 printImage,
                 redeemFormat,
@@ -345,7 +359,7 @@ const Category = () => {
           تريد المتابعة؟
         </p>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -393,7 +407,7 @@ const Category = () => {
             أنواع البطاقات
           </h1>
           {categoryName && <p className="my-3">التصنيف: {categoryName}</p>}
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             إجمالي الأنواع: {totalCardTypes}
           </p>
         </div>
@@ -422,7 +436,7 @@ const Category = () => {
       </div>
 
       {successMessage && (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
           {successMessage}
         </div>
       )}
@@ -453,7 +467,7 @@ const Category = () => {
       )}
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="grid grid-cols-12 gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+        <div className="grid grid-cols-12 gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           <div className="col-span-1">الترتيب</div>
           <div className="col-span-9">اسم النوع</div>
           <div className="col-span-2 text-left">
@@ -461,7 +475,7 @@ const Category = () => {
           </div>
         </div>
         {isLoading ? (
-          <div className="px-4 py-10 text-center text-sm text-slate-500">
+          <div className="px-4 py-10 text-center text-sm text-slate-600">
             جاري تحميل أنواع البطاقات...
           </div>
         ) : error ? (
@@ -469,7 +483,7 @@ const Category = () => {
             {error}
           </div>
         ) : activeList.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-slate-500">
+          <div className="px-4 py-8 text-center text-sm text-slate-600">
             لا توجد أنواع بطاقات للعرض
           </div>
         ) : (
@@ -508,20 +522,22 @@ const Category = () => {
                   {index + 1}
                 </div>
                 <div className="col-span-9">
-                  <div className="font-medium text-slate-800">{type.name}</div>
+                  <div className="font-medium text-slate-800">
+                    {getDisplayName(type.name)}
+                  </div>
                 </div>
-                <div className="col-span-2 flex items-center justify-end text-sm text-slate-400">
+                <div className="col-span-2 flex items-center justify-end text-sm text-slate-600">
                   {isEditing ? (
                     <span className="cursor-move select-none">⋮⋮</span>
                   ) : (
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                      className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
                       onClick={(event) => {
                         event.stopPropagation();
                         openDialog(
                           <DeleteTypeDialog
-                            typeName={type.name}
+                            typeName={getDisplayName(type.name)}
                             onDelete={() => handleDeleteType(type._id)}
                             onCancel={closeDialog}
                           />,

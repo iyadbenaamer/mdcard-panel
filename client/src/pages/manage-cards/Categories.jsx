@@ -18,6 +18,8 @@ import { useBreadcrumb } from "components/breadcrumb/BreadcrumbContext";
 
 import TrashIcon from "assets/icons/trash-basket.svg?react";
 
+const getDisplayName = (name) => name?.ar || name?.en || "";
+
 const Categories = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState([]);
@@ -78,7 +80,9 @@ const Categories = () => {
     ? draftCategories
     : trimmedNameFilter
       ? categories.filter((category) =>
-          category.name?.toLowerCase().includes(trimmedNameFilter),
+          getDisplayName(category.name)
+            .toLowerCase()
+            .includes(trimmedNameFilter),
         )
       : categories;
   const tableColumns = [
@@ -107,10 +111,12 @@ const Categories = () => {
     setSuccessMessage("");
   };
 
-  const handleNameChange = (index, value) => {
+  const handleNameChange = (index, lang, value) => {
     setDraftCategories((prev) =>
       prev.map((item, idx) =>
-        idx === index ? { ...item, name: value } : item,
+        idx === index
+          ? { ...item, name: { ...item.name, [lang]: value } }
+          : item,
       ),
     );
   };
@@ -148,7 +154,8 @@ const Categories = () => {
       const payload = {
         categories: draftCategories.map((category, index) => ({
           id: category._id,
-          name: category.name,
+          nameAr: category.name?.ar ?? "",
+          nameEn: category.name?.en ?? "",
           order: index + 1,
         })),
       };
@@ -167,15 +174,17 @@ const Categories = () => {
   };
 
   const handleCreateCategory = useCallback(
-    async (name) => {
-      const trimmed = name.trim();
-      if (!trimmed) {
-        return { ok: false, error: "اسم التصنيف مطلوب." };
+    async (nameAr, nameEn) => {
+      const trimmedAr = nameAr.trim();
+      const trimmedEn = nameEn.trim();
+      if (!trimmedAr) {
+        return { ok: false, error: "اسم التصنيف (عربي) مطلوب." };
       }
       try {
         const order = categories.length + 1;
         await axiosClient.post("/card-categories", {
-          name: trimmed,
+          nameAr: trimmedAr,
+          nameEn: trimmedEn,
           order,
         });
         await fetchCategories({ skipDraft: true });
@@ -220,7 +229,8 @@ const Categories = () => {
   );
 
   const CreateCategoryDialog = ({ onCreate, onCancel }) => {
-    const [name, setName] = useState("");
+    const [nameAr, setNameAr] = useState("");
+    const [nameEn, setNameEn] = useState("");
     const [dialogError, setDialogError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const inputRef = useRef(null);
@@ -234,16 +244,21 @@ const Categories = () => {
         <h2 className="text-base font-semibold text-slate-800">
           إنشاء تصنيف جديد
         </h2>
-        <div className="mt-4">
+        <div className="mt-4 space-y-3">
           <CustomInput
             autoFocus
-            label="اسم التصنيف"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+            label="اسم التصنيف (عربي)"
+            value={nameAr}
+            onChange={(event) => setNameAr(event.target.value)}
+          />
+          <CustomInput
+            label="اسم التصنيف (إنجليزي، اختياري)"
+            value={nameEn}
+            onChange={(event) => setNameEn(event.target.value)}
           />
         </div>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -260,7 +275,7 @@ const Categories = () => {
             onClick={async () => {
               setIsSubmitting(true);
               setDialogError("");
-              const result = await onCreate(name);
+              const result = await onCreate(nameAr, nameEn);
               if (result?.ok) {
                 onCancel();
               } else if (result?.error) {
@@ -292,7 +307,7 @@ const Categories = () => {
           هل تريد المتابعة؟
         </p>
         {dialogError && (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
             {dialogError}
           </div>
         )}
@@ -340,7 +355,7 @@ const Categories = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">التصنيفات</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             إجمالي التصنيفات: {totalCategories}
           </p>
         </div>
@@ -369,7 +384,7 @@ const Categories = () => {
       </div>
 
       {successMessage && (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
           {successMessage}
         </div>
       )}
@@ -387,7 +402,7 @@ const Categories = () => {
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="px-4 py-10 text-center text-sm text-slate-500">
+          <div className="px-4 py-10 text-center text-sm text-slate-600">
             جاري تحميل التصنيفات...
           </div>
         ) : error ? (
@@ -395,7 +410,7 @@ const Categories = () => {
             {error}
           </div>
         ) : activeList.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-slate-500">
+          <div className="px-4 py-8 text-center text-sm text-slate-600">
             لا توجد تصنيفات للعرض
           </div>
         ) : (
@@ -435,35 +450,47 @@ const Categories = () => {
                   <TableCell className="text-slate-600">{index + 1}</TableCell>
                   <TableCell>
                     {isEditing ? (
-                      <input
-                        type="text"
-                        value={category.name ?? ""}
-                        onChange={(event) =>
-                          handleNameChange(index, event.target.value)
-                        }
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      />
+                      <div className="flex flex-col gap-2">
+                        <input
+                          type="text"
+                          placeholder="عربي"
+                          value={category.name?.ar ?? ""}
+                          onChange={(event) =>
+                            handleNameChange(index, "ar", event.target.value)
+                          }
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        />
+                        <input
+                          type="text"
+                          placeholder="English"
+                          value={category.name?.en ?? ""}
+                          onChange={(event) =>
+                            handleNameChange(index, "en", event.target.value)
+                          }
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        />
+                      </div>
                     ) : (
                       <div className="font-medium text-slate-800">
-                        {category.name}
+                        {getDisplayName(category.name)}
                       </div>
                     )}
                   </TableCell>
                   <TableCell className="text-slate-600">
                     {category.count ?? 0}
                   </TableCell>
-                  <TableCell className="text-left text-slate-400">
+                  <TableCell className="text-left text-slate-600">
                     {isEditing ? (
                       <span className="cursor-move select-none">⋮⋮</span>
                     ) : (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
                         onClick={(event) => {
                           event.stopPropagation();
                           openDialog(
                             <DeleteCategoryDialog
-                              categoryName={category.name}
+                              categoryName={getDisplayName(category.name)}
                               onDelete={() =>
                                 handleDeleteCategory(category._id)
                               }

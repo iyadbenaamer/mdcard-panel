@@ -246,7 +246,8 @@ export const getOne = async (req, res) => {
 export const createOne = async (req, res) => {
   try {
     let {
-      name,
+      nameAr,
+      nameEn,
       isActive,
       categoryId,
       order,
@@ -257,9 +258,10 @@ export const createOne = async (req, res) => {
     const image = req.filePath;
     const printImage = req.printFilePath ?? req.body.printImage;
     const redeemFormat = req.body.redeemFormat?.trim();
-    name = name?.trim();
+    nameAr = nameAr?.trim();
+    nameEn = nameEn?.trim();
     notes = notes?.trim();
-    if (!name) {
+    if (!nameAr) {
       return res.status(400).json({ code: "CARD_TYPE_NAME_REQUIRED" });
     }
 
@@ -295,7 +297,7 @@ export const createOne = async (req, res) => {
 
     const cardType = new CardType({
       categoryId,
-      name,
+      name: { ar: nameAr, en: nameEn || "" },
       fulfillmentSource: nextFulfillmentSource,
       image,
       printImage,
@@ -323,7 +325,8 @@ export const updateOne = async (req, res) => {
   try {
     const { id } = req.query;
     let {
-      name,
+      nameAr,
+      nameEn,
       categoryId,
       isActive,
       fulfillmentSource,
@@ -339,12 +342,16 @@ export const updateOne = async (req, res) => {
       return res.status(404).json({ code: "CARD_TYPE_NOT_FOUND" });
     }
 
-    if (name !== undefined) {
-      name = name?.trim();
-      if (!name) {
+    if (nameAr !== undefined || nameEn !== undefined) {
+      const nextNameAr =
+        nameAr !== undefined ? nameAr?.trim() : cardType.name?.ar;
+      if (!nextNameAr) {
         return res.status(400).json({ code: "CARD_TYPE_NAME_REQUIRED" });
       }
-      cardType.name = name;
+      cardType.name = {
+        ar: nextNameAr,
+        en: nameEn !== undefined ? nameEn?.trim() || "" : cardType.name?.en,
+      };
     }
 
     if (categoryId !== undefined) {
