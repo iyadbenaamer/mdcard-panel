@@ -27,6 +27,13 @@ const requestLogSchema = new Schema(
     // Only set for a failed "verification_code" attempt (wrong/expired
     // code) - how many attempts were left after this one.
     remainingAttempts: { type: Number, default: null },
+    // Raw values as submitted on the request, captured up front before the
+    // handler even knows whether they belong to a real account - so a failed
+    // login against an unregistered phone, or a rejected signup, still shows
+    // what was typed instead of leaving the row blank. `name` is only ever
+    // set for signup (login/verification/password-change never submit one).
+    phone: { type: String, default: null },
+    name: { type: String, default: null },
     userId: { type: ObjectId, ref: "User", default: null, index: true },
     authMethod: { type: String, enum: ["session", "api_key"], default: null },
     method: { type: String, required: true },

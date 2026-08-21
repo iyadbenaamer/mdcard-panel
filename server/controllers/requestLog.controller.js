@@ -78,17 +78,20 @@ export const get = async (req, res) => {
       }
       filter.userId = userId;
     } else if (hasUserQuery) {
+      // Matches either a registered account (by userId) or the raw
+      // name/phone captured directly on the log itself - the latter is what
+      // makes a failed login against an unregistered phone, or a rejected
+      // signup, searchable even though there's no User doc to join against.
       const users = await User.find(buildUserSearchFilter(userQuery))
         .select("_id")
         .limit(200);
       const userIds = users.map((user) => user._id);
-      if (userIds.length === 0) {
-        return res.status(200).json({
-          logs: [],
-          pagination: { page, limit, total: 0, totalPages: 1, hasMore: false },
-        });
-      }
-      filter.userId = { $in: userIds };
+      const rawMatch = buildUserSearchFilter(userQuery);
+
+      filter.$or = [
+        ...(rawMatch.$or || []),
+        ...(userIds.length > 0 ? [{ userId: { $in: userIds } }] : []),
+      ];
     }
 
     if (actionType) {

@@ -11,6 +11,7 @@ import {
 } from "components/Table";
 import RedBtn from "components/RedBtn";
 import FilterBar from "components/FilterBar";
+import Badge from "components/Badge";
 import { useDialog } from "components/dialog/DialogContext";
 import RequestLogDetailsDialog from "pages/requestLogs/components/RequestLogDetailsDialog";
 import LoadingIcon from "assets/icons/loading-circle.svg?react";
@@ -37,11 +38,11 @@ const ACTION_TYPE_LABELS = {
 };
 
 const ACTION_TYPE_STYLES = {
-  login: "bg-sky-100 text-sky-700",
-  signup: "bg-violet-100 text-violet-700",
-  verification_code: "bg-amber-100 text-amber-700",
+  login: "bg-sky-100 text-sky-800",
+  signup: "bg-violet-100 text-violet-800",
+  verification_code: "bg-amber-100 text-amber-800",
   password_change: "bg-orange-100 text-orange-700",
-  checkout: "bg-emerald-100 text-emerald-700",
+  checkout: "bg-emerald-100 text-emerald-800",
 };
 
 const LOG_FILTER_FIELDS = [
@@ -297,7 +298,7 @@ const RequestLogs = () => {
             <h1 className="text-2xl font-semibold text-slate-800">
               سجل النشاط
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               إجمالي السجلات: {totalLogs}
             </p>
           </div>
@@ -311,7 +312,7 @@ const RequestLogs = () => {
             >
               {isLoading ? <LoadingIcon height={18} /> : "تحديث"}
             </button>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-600">
               المحدد: {selectedIds.size}
             </span>
             <button
@@ -341,18 +342,18 @@ const RequestLogs = () => {
         />
 
         {error && (
-          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         )}
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
           {isLoading ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               جاري تحميل السجلات...
             </div>
           ) : logs.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               لا توجد سجلات متاحة حاليا.
             </div>
           ) : (
@@ -399,22 +400,12 @@ const RequestLogs = () => {
                         {index + 1 + (page - 1) * LOGS_PER_PAGE}
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs ${actionClass}`}
-                        >
-                          {actionLabel}
-                        </span>
+                        <Badge className={actionClass}>{actionLabel}</Badge>
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs ${
-                            log.status === "success"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-rose-100 text-rose-700"
-                          }`}
-                        >
+                        <Badge tone={log.status === "success" ? "success" : "danger"}>
                           {log.status === "success" ? "نجاح" : "فشل"}
-                        </span>
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {log.userId ? (
@@ -424,11 +415,23 @@ const RequestLogs = () => {
                           >
                             <div className="font-semibold">{userName}</div>
                             {userPhone && (
-                              <div className="text-xs text-slate-500">
+                              <div className="text-xs text-slate-600">
                                 {userPhone}
                               </div>
                             )}
                           </Link>
+                        ) : log.phone || log.name ? (
+                          <div>
+                            <div className="font-semibold text-slate-700">
+                              {log.name || "—"}
+                            </div>
+                            {log.phone && (
+                              <div className="text-xs text-slate-600" dir="ltr">
+                                {log.phone}
+                              </div>
+                            )}
+                         
+                          </div>
                         ) : (
                           "—"
                         )}

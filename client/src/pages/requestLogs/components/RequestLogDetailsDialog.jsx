@@ -1,4 +1,5 @@
 import RedBtn from "components/RedBtn";
+import Badge from "components/Badge";
 
 const formatDateTime = (value) => {
   const date = new Date(value);
@@ -29,7 +30,7 @@ const AUTH_METHOD_LABELS = {
 
 const DetailRow = ({ label, value, dir }) => (
   <div className="flex items-start justify-between gap-3 border-b border-slate-100 py-2 last:border-b-0">
-    <span className="text-xs text-slate-500">{label}</span>
+    <span className="text-xs text-slate-600">{label}</span>
     <span className="text-sm font-medium text-slate-800" dir={dir}>
       {value || "—"}
     </span>
@@ -51,19 +52,13 @@ const RequestLogDetailsDialog = ({ log, onClose }) => {
           <h2 className="text-lg font-semibold text-slate-800">
             تفاصيل السجل
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             {ACTION_TYPE_LABELS[log?.actionType] || log?.actionType || "—"}
           </p>
         </div>
-        <div
-          className={`rounded-full px-3 py-1 text-xs ${
-            log?.status === "success"
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-rose-100 text-rose-700"
-          }`}
-        >
+        <Badge tone={log?.status === "success" ? "success" : "danger"}>
           {log?.status === "success" ? "نجاح" : "فشل"}
-        </div>
+        </Badge>
       </div>
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -74,7 +69,9 @@ const RequestLogDetailsDialog = ({ log, onClose }) => {
               ? `${log.user.name || "—"}${
                   log.user.phone ? ` (${log.user.phone})` : ""
                 }`
-              : "—"
+              : log?.name || log?.phone
+                ? `${log.name || "—"}${log.phone ? ` (${log.phone})` : ""} — غير مسجل`
+                : "—"
           }
         />
         <DetailRow label="رمز النتيجة" value={log?.resultCode} dir="ltr" />
