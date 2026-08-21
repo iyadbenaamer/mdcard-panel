@@ -14,6 +14,9 @@ import TransactionsIcon from "assets/icons/transactions.svg?react";
 import LogsIcon from "assets/icons/logs.svg?react";
 import SettingsIcon from "assets/icons/settings.svg?react";
 import DealsIcon from "assets/icons/deals.svg?react";
+import PaymentMethodsIcon from "assets/icons/payment-methods.svg?react";
+import DiscountIcon from "assets/icons/discount.svg?react";
+import NotificationsIcon from "assets/icons/notifications.svg?react";
 import LogoutIcon from "assets/icons/logout.svg?react";
 
 const Sidebar = ({ showLogo = true, onItemClick }) => {
@@ -66,22 +69,40 @@ const Sidebar = ({ showLogo = true, onItemClick }) => {
           <SidebarItem to="/deals" name="العروض الترويجية" onClick={onItemClick}>
             <DealsIcon />
           </SidebarItem>
+          <SidebarItem to="/discounts" name="التخفيضات" onClick={onItemClick}>
+            <DiscountIcon />
+          </SidebarItem>
+          <SidebarItem
+            to="/payment-methods"
+            name="وسائل الدفع"
+            onClick={onItemClick}
+          >
+            <PaymentMethodsIcon />
+          </SidebarItem>
+          <SidebarItem
+            to="/notifications"
+            name="الإشعارات"
+            onClick={onItemClick}
+          >
+            <NotificationsIcon />
+          </SidebarItem>
           <SidebarItem to="/settings" name="الإعدادات" onClick={onItemClick}>
             <SettingsIcon />
           </SidebarItem>
         </ul>
       </div>
       <div className="shrink-0 p-4">
-        <div
-          className="flex gap-3 text-[#cb3f46] p-2 items-center cursor-pointer rounded-xl hover:bg-[#4c5b69] transition"
-          onClick={async () => {
+        <button
+          type="button"
+          className="flex w-full gap-3 text-rose-300 p-2 items-center cursor-pointer rounded-xl hover:bg-[#4c5b69] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-300"
+          onClick={() => {
             dispatch(logout());
             onItemClick?.();
           }}
         >
           <LogoutIcon className="w-9 inline mr-2 -ml-1" />
-          <div>تسجيل الخروج</div>
-        </div>
+          <span>تسجيل الخروج</span>
+        </button>
       </div>
     </aside>
   );

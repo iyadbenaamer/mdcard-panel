@@ -25,6 +25,9 @@ import requestLogRoute from "./routes/requestLog.route.js";
 import settingRoute from "./routes/setting.route.js";
 import appVersionRoute from "./routes/appVersion.route.js";
 import dealRoute from "./routes/deal.route.js";
+import paymentMethodRoute from "./routes/paymentMethod.route.js";
+import discountRoute from "./routes/discount.route.js";
+import notificationRoute from "./routes/notification.route.js";
 import connectDB from "./config/db.js";
 import { runAutoDeleteJob } from "./utils/autoDelete.js";
 
@@ -35,10 +38,13 @@ dotenv.config();
 /*CONFIGURATIONS*/
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "C:\\Users\\Iyad\\mdcard\\";
 const storagePath = path.join(UPLOAD_DIR, "storage");
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
+// Behind a reverse proxy, req.protocol reports "http" unless this is set,
+// even when the real public request was https - which would send Expo a
+// scheme it can't actually reach when building notification image URLs
+// (see toAbsoluteImageUrl in notification.controller.js).
+app.set("trust proxy", 1);
 const cookieSecret = process.env.COOKIE_SECRET || process.env.JWT_SECRET;
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
@@ -81,6 +87,9 @@ app.use("/api/request-logs", requestLogRoute);
 app.use("/api/settings", settingRoute);
 app.use("/api/app-version", appVersionRoute);
 app.use("/api/deals", dealRoute);
+app.use("/api/payment-methods", paymentMethodRoute);
+app.use("/api/discounts", discountRoute);
+app.use("/api/notifications", notificationRoute);
 
 /*MONGOOSE SETUP*/
 connectDB();
