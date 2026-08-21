@@ -266,12 +266,12 @@ const Orders = () => {
             <h1 className="text-2xl font-semibold text-slate-800">
               جميع الطلبات
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               إجمالي الطلبات: {totalOrders}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-600">
               المحدد: {selectedIds.size}
             </span>
             <button
@@ -318,18 +318,18 @@ const Orders = () => {
         />
 
         {error && (
-          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         )}
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
           {isLoading ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               جاري تحميل الطلبات...
             </div>
           ) : orders.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               لا توجد طلبات متاحة حاليا.
             </div>
           ) : (

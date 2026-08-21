@@ -56,7 +56,7 @@ const AddUserDialog = ({ onAdded, onClose }) => {
       <h2 className="text-lg font-semibold text-slate-800">
         إنشاء مستخدم جديد
       </h2>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-slate-600">
         أدخل الاسم، رقم الهاتف وكلمة المرور للمستخدم.
       </p>
 
@@ -79,7 +79,7 @@ const AddUserDialog = ({ onAdded, onClose }) => {
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
         <div>
-          <label className="text-xs text-slate-500">نوع الحساب</label>
+          <label className="text-xs text-slate-600">نوع الحساب</label>
           <select
             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             value={form.role}
@@ -91,7 +91,7 @@ const AddUserDialog = ({ onAdded, onClose }) => {
         </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
+      {error && <p className="mt-3 text-sm text-rose-700">{error}</p>}
 
       <div className="mt-8 flex items-center justify-end gap-3">
         <button

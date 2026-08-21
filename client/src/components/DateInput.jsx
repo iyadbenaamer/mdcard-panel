@@ -150,7 +150,7 @@ const DateInput = ({
             onClick={openCalendar}
             className="custom-input flex w-full items-center justify-between gap-2"
           >
-            <span dir="ltr" className={value ? "text-[#0b1b2b]" : "text-slate-400"}>
+            <span dir="ltr" className={value ? "text-[#0b1b2b]" : "text-slate-600"}>
               {value || placeholder}
             </span>
             <span className="flex shrink-0 items-center gap-1">
@@ -165,14 +165,14 @@ const DateInput = ({
                       handleClear(event);
                     }
                   }}
-                  className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-full p-0.5 text-slate-600 hover:bg-slate-100 hover:text-slate-600"
                   aria-label="مسح التاريخ"
                 >
                   <CrossIcon className="h-3.5 w-3.5" />
                 </span>
               )}
               <svg
-                className="h-4 w-4 text-slate-400"
+                className="h-4 w-4 text-slate-600"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -199,7 +199,7 @@ const DateInput = ({
             <button
               type="button"
               onClick={goToPrevMonth}
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+              className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
               aria-label="الشهر السابق"
             >
               <ArrowRightIcon className="h-4 w-4" />
@@ -210,14 +210,14 @@ const DateInput = ({
             <button
               type="button"
               onClick={goToNextMonth}
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+              className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
               aria-label="الشهر التالي"
             >
               <ArrowLeftIcon className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="mt-3 grid grid-cols-7 gap-1 text-center text-xs text-slate-400">
+          <div className="mt-3 grid grid-cols-7 gap-1 text-center text-xs text-slate-600">
             {WEEKDAY_LABELS.map((weekday) => (
               <span key={weekday}>{weekday}</span>
             ))}
@@ -266,7 +266,7 @@ const DateInput = ({
                 emitChange("");
                 setIsOpen(false);
               }}
-              className="text-xs text-slate-500 hover:underline"
+              className="text-xs text-slate-600 hover:underline"
             >
               مسح
             </button>

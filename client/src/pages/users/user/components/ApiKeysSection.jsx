@@ -44,7 +44,7 @@ const CreateApiKeyDialog = ({ userId, onCreate, onCancel }) => {
         <h2 className="text-base font-semibold text-slate-800">
           تم إنشاء المفتاح
         </h2>
-        <p className="mt-2 text-sm text-rose-600">
+        <p className="mt-2 text-sm text-rose-700">
           انسخ المفتاح الآن - لن يتم عرضه مرة أخرى بعد إغلاق هذه النافذة.
         </p>
         <div
@@ -84,7 +84,7 @@ const CreateApiKeyDialog = ({ userId, onCreate, onCancel }) => {
         />
       </div>
       {dialogError && (
-        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
           {dialogError}
         </div>
       )}
@@ -241,7 +241,7 @@ const ApiKeysSection = ({ userId }) => {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-slate-700">مفاتيح API</h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-600">
             مفاتيح للوصول البرمجي المباشر - لا يمكن استخدامها من تطبيق الجوال
           </p>
         </div>
@@ -261,21 +261,21 @@ const ApiKeysSection = ({ userId }) => {
       </div>
 
       {success && (
-        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
+        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
           {success}
         </div>
       )}
 
       {isLoading ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           جاري تحميل مفاتيح API...
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-600">
+        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
           {error}
         </div>
       ) : apiKeys.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           لا يوجد مفاتيح API لهذا المستخدم حتى الآن.
         </div>
       ) : (
@@ -291,7 +291,7 @@ const ApiKeysSection = ({ userId }) => {
                     <span
                       className={
                         apiKey.createdByType === "user"
-                          ? "rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700"
+                          ? "rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-800"
                           : "rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
                       }
                     >

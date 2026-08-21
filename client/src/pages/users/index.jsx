@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Layout from "layout";
 import PrimaryBtn from "components/PrimaryBtn";
 import FilterBar from "components/FilterBar";
+import Badge from "components/Badge";
 import {
   Table,
   TableBody,
@@ -166,9 +167,9 @@ const Users = () => {
     setPage(1);
   };
 
-  const statusStyles = {
-    true: "bg-green-100 text-green-700",
-    false: "bg-red-100 text-red-700",
+  const statusTones = {
+    true: "success",
+    false: "danger",
   };
   const statusLabels = {
     true: "مفعّل",
@@ -190,7 +191,7 @@ const Users = () => {
             <h1 className="text-2xl font-semibold text-slate-800">
               إدارة المستخدمين
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               إجمالي المستخدمين: {totalUsers}
             </p>
           </div>
@@ -231,7 +232,7 @@ const Users = () => {
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {isLoading ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-500">
+            <div className="px-4 py-10 text-center text-sm text-slate-600">
               جاري تحميل المستخدمين...
             </div>
           ) : error ? (
@@ -239,7 +240,7 @@ const Users = () => {
               {error}
             </div>
           ) : users.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-slate-600">
               لا يوجد مستخدمون للعرض
             </div>
           ) : (
@@ -273,15 +274,9 @@ const Users = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                          user.role === "individual"
-                            ? "bg-sky-100 text-sky-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
+                      <Badge tone={user.role === "individual" ? "info" : "warning"}>
                         {user.role === "individual" ? "فردي" : "تجاري"}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-slate-600" dir="ltr">
                       {user.phone}
@@ -290,13 +285,9 @@ const Users = () => {
                       {user.createdAt ? formatArabicDate(user.createdAt) : "—"}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                          statusStyles[String(user.isActive)]
-                        }`}
-                      >
+                      <Badge tone={statusTones[String(user.isActive)]}>
                         {statusLabels[String(user.isActive)]}
-                      </span>
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

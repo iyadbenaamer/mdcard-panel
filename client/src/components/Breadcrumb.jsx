@@ -36,11 +36,11 @@ const Breadcrumb = () => {
     };
   });
   return (
-    <nav className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+    <nav className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
       <div className="flex items-center gap-1">
         <button
           type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:text-primary disabled:opacity-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:text-primary disabled:opacity-50"
           onClick={() => navigate(-1)}
           aria-label="رجوع"
         >
@@ -48,7 +48,7 @@ const Breadcrumb = () => {
         </button>
         <button
           type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:text-primary disabled:opacity-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:text-primary disabled:opacity-50"
           onClick={() => navigate(1)}
           aria-label="تقدم"
         >
@@ -60,7 +60,7 @@ const Breadcrumb = () => {
           key={`${item.label}-${index}`}
           className="flex items-center gap-2"
         >
-          {index > 0 && <span className="text-slate-300">/</span>}
+          {index > 0 && <span className="text-slate-600">/</span>}
           {item.onClick ? (
             <button
               type="button"

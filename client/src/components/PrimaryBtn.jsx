@@ -1,17 +1,27 @@
+import { useState } from "react";
+
+import LoadingIcon from "assets/icons/loading-circle.svg?react";
+
 const PrimaryBtn = (props) => {
-  const { onClick, disabled, children } = props;
+  const { onClick, disabled, children, type = "button", className = "" } = props;
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <button
-      disabled={disabled}
-      className="py-1 px-4 border-solid bg-primary text-white rounded-xl"
-      onClick={(e) => {
-        e.target.style.opacity = "0.7";
-        onClick();
-        e.target.style.opacity = null;
+      type={type}
+      disabled={disabled || isLoading}
+      className={`flex justify-center items-center gap-2 cursor-pointer disabled:cursor-auto py-1 px-4 border-solid bg-primary text-white rounded-xl transition hover:opacity-90 disabled:opacity-70 ${className}`}
+      onClick={async () => {
+        if (!onClick) return;
+        setIsLoading(true);
+        try {
+          await onClick();
+        } finally {
+          setIsLoading(false);
+        }
       }}
     >
-      {children}
+      {isLoading ? <LoadingIcon height={20} stroke="white" /> : children}
     </button>
   );
 };

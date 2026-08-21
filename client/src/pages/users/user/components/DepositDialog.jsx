@@ -35,7 +35,7 @@ const DepositDialog = ({ userId, onBalanceUpdate, onClose }) => {
   return (
     <div className="min-w-80 p-4 text-right" dir="rtl">
       <h2 className="text-lg font-semibold text-slate-800">إيداع رصيد</h2>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-slate-600">
         أدخل المبلغ المراد إضافته إلى رصيد المستخدم.
       </p>
 
@@ -51,7 +51,7 @@ const DepositDialog = ({ userId, onBalanceUpdate, onClose }) => {
           autoFocus
           placeholder="0.00"
         />
-        {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
+        {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
       </div>
 
       <div className="mt-8 flex items-center justify-end gap-3">

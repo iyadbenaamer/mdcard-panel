@@ -124,27 +124,27 @@ const SessionsSection = ({ userId }) => {
         <h2 className="text-sm font-semibold text-slate-700">
           أجهزة تسجيل الدخول
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-600">
           الأجهزة التي سجل المستخدم الدخول منها عبر تطبيق الجوال
         </p>
       </div>
 
       {success && (
-        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
+        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
           {success}
         </div>
       )}
 
       {isLoading ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           جاري تحميل الأجهزة...
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-600">
+        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
           {error}
         </div>
       ) : sessions.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
           لا يوجد جهاز مسجل دخول لهذا المستخدم حاليًا.
         </div>
       ) : (

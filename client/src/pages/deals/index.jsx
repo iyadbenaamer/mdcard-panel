@@ -5,6 +5,7 @@ import axiosClient from "utils/AxiosClient";
 import CustomInput from "components/CustomInput";
 import ImageUpload from "components/ImageUpload";
 import ToggleSwitch from "components/ToggleSwitch";
+import Badge from "components/Badge";
 import PrimaryBtn from "components/PrimaryBtn";
 import SubmitBtn from "components/SubmitBtn";
 import RedBtn from "components/RedBtn";
@@ -76,7 +77,7 @@ const DealForm = ({ initialValues, onSubmit, onCancel, submitLabel }) => {
         <ToggleSwitch label="مفعّل" checked={isActive} onChange={setIsActive} />
       </div>
       {dialogError && (
-        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
           {dialogError}
         </div>
       )}
@@ -262,7 +263,7 @@ const Deals = () => {
             <h1 className="text-2xl font-semibold text-slate-800">
               العروض الترويجية
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               العروض الترويجية المعروضة في الصفحة الرئيسية للتطبيق (لحسابات
               الأفراد فقط)
             </p>
@@ -273,22 +274,22 @@ const Deals = () => {
         </div>
 
         {successMessage && (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
+          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
             {successMessage}
           </div>
         )}
 
         <div className="mt-6">
           {isLoading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-600">
               جاري تحميل العروض...
             </div>
           ) : error ? (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-600">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-700">
               {error}
             </div>
           ) : deals.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-600">
               لا توجد عروض حتى الآن.
             </div>
           ) : (
@@ -307,15 +308,9 @@ const Deals = () => {
                     <TableCell>{safeValue(deal.badge)}</TableCell>
                     <TableCell dir="ltr">{safeValue(deal.link)}</TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                          deal.isActive
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-rose-100 text-rose-700"
-                        }`}
-                      >
+                      <Badge tone={deal.isActive ? "success" : "danger"}>
                         {deal.isActive ? "مفعّل" : "غير مفعّل"}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {deal.createdAt ? formatArabicDate(deal.createdAt) : "—"}
@@ -331,7 +326,7 @@ const Deals = () => {
                         </button>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
                           onClick={() => handleOpenDeleteDialog(deal)}
                           disabled={deleteId === deal._id}
                         >

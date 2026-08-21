@@ -5,6 +5,7 @@ import Layout from "layout";
 import axiosClient from "utils/AxiosClient";
 import CustomInput from "components/CustomInput";
 import PrimaryBtn from "components/PrimaryBtn";
+import Alert from "components/Alert";
 import SubmitBtn from "components/SubmitBtn";
 import RedBtn from "components/RedBtn";
 import { useDialog } from "components/dialog/DialogContext";
@@ -357,24 +358,13 @@ const User = () => {
     );
   };
 
-  const badgeClass = (value) =>
-    value ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700";
-
   return (
     <Layout>
       <div className="px-4 py-6" dir="rtl">
         {(error || successMessage) && (
           <div className="mb-5 space-y-3">
-            {error && (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-600">
-                {error}
-              </div>
-            )}
-            {successMessage && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
-                {successMessage}
-              </div>
-            )}
+            <Alert tone="error">{error}</Alert>
+            <Alert tone="success">{successMessage}</Alert>
           </div>
         )}
 
@@ -392,7 +382,7 @@ const User = () => {
               <h1 className="text-2xl font-semibold text-slate-800">
                 تفاصيل المستخدم
               </h1>
-              <p className="mt-1 text-sm text-slate-500">{user?.name || "—"}</p>
+              <p className="mt-1 text-sm text-slate-600">{user?.name || "—"}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -423,11 +413,11 @@ const User = () => {
         </div>
 
         {isLoading && !user ? (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-500">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-600">
             جاري تحميل بيانات المستخدم...
           </div>
         ) : !user ? (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-500">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-600">
             لا يوجد بيانات لعرضها.
           </div>
         ) : (
@@ -482,7 +472,7 @@ const User = () => {
                     }
                   />
                   <div>
-                    <label className="text-xs text-slate-500">نوع الحساب</label>
+                    <label className="text-xs text-slate-600">نوع الحساب</label>
                     <select
                       className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                       value={formState.role}
@@ -498,7 +488,7 @@ const User = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-slate-600">
                       حالة التحقق من الحساب
                     </label>
                     <select
@@ -516,7 +506,7 @@ const User = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-slate-600">
                       حالة الحساب
                     </label>
                     <select
@@ -534,7 +524,7 @@ const User = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-slate-600">
                       يمكنه الشراء
                     </label>
                     <select
@@ -552,7 +542,7 @@ const User = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-slate-600">
                       يمكنه إرسال رموز التحقق
                     </label>
                     <select
@@ -571,7 +561,7 @@ const User = () => {
                   </div>
                   {user.role === "business" && (
                     <div>
-                      <label className="text-xs text-slate-500">
+                      <label className="text-xs text-slate-600">
                         يمكنه إدارة مفاتيح API الخاصة به
                       </label>
                       <select
@@ -593,7 +583,7 @@ const User = () => {
               </div>
             )}
 
-            <UserInfoGrid infoItems={infoItems} badgeClass={badgeClass} />
+            <UserInfoGrid infoItems={infoItems} />
 
             {user.role !== "individual" && (
               <CustomPricingSection userId={user?._id} />

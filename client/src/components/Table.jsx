@@ -58,7 +58,7 @@ const renderPagination = (pagination) => {
     <tfoot>
       <tr className="border-t border-slate-100">
         <td className="px-4 py-3 align-middle" colSpan={999}>
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
             <div>
               {label} {safePage} من {totalPages}
             </div>
@@ -75,7 +75,7 @@ const renderPagination = (pagination) => {
                 item === "..." ? (
                   <span
                     key={`table-page-ellipsis-${index}`}
-                    className="px-2 text-sm text-slate-400"
+                    className="px-2 text-sm text-slate-600"
                   >
                     ...
                   </span>
@@ -109,33 +109,72 @@ const renderPagination = (pagination) => {
   );
 };
 
+// Recursively walks a tree of row elements, unwrapping fragments, and tags
+// each direct TableCell in a TableRow with a data-label taken from the
+// matching column (by position). The label drives the stacked "card" layout
+// the .responsive-table CSS switches to on small screens, without requiring
+// every page that uses <Table> to be rewritten.
+const withRowLabels = (node, columns) => {
+  if (!React.isValidElement(node)) return node;
+
+  if (node.type === React.Fragment) {
+    return React.cloneElement(node, {
+      children: React.Children.map(node.props.children, (child) =>
+        withRowLabels(child, columns),
+      ),
+    });
+  }
+
+  if (node.type !== TableRow) return node;
+
+  let cellIndex = 0;
+  const cells = React.Children.map(node.props.children, (cell) => {
+    const column = columns[cellIndex];
+    cellIndex += 1;
+    if (!React.isValidElement(cell) || cell.type !== TableCell) return cell;
+    const label = typeof column?.label === "string" ? column.label : undefined;
+    return label ? React.cloneElement(cell, { "data-label": label }) : cell;
+  });
+
+  return React.cloneElement(node, {}, cells);
+};
+
 const Table = ({
   columns = [],
   className = "",
   children,
   footer,
   pagination,
-}) => (
-  <div className={`w-full overflow-x-auto ${className} text-center`}>
-    <table className="w-full min-w-180 border-collapse border border-slate-200 ">
-      {columns.length > 0 && (
-        <colgroup>
-          {columns.map((column) => (
-            <col
-              key={column.key}
-              style={column.width ? { width: column.width } : undefined}
-            />
-          ))}
-        </colgroup>
-      )}
-      {children}
-      {footer ? <tfoot>{footer}</tfoot> : renderPagination(pagination)}
-    </table>
-  </div>
-);
+}) => {
+  const content = React.Children.map(children, (child) => {
+    if (React.isValidElement(child) && child.type === TableBody) {
+      return React.cloneElement(child, { columns });
+    }
+    return child;
+  });
+
+  return (
+    <div className={`w-full overflow-x-auto ${className} text-center`}>
+      <table className="responsive-table w-full sm:min-w-180 border-collapse border border-slate-200">
+        {columns.length > 0 && (
+          <colgroup>
+            {columns.map((column) => (
+              <col
+                key={column.key}
+                style={column.width ? { width: column.width } : undefined}
+              />
+            ))}
+          </colgroup>
+        )}
+        {content}
+        {footer ? <tfoot>{footer}</tfoot> : renderPagination(pagination)}
+      </table>
+    </div>
+  );
+};
 
 const TableHead = ({ columns = [] }) => (
-  <thead className="bg-slate-50 text-sm text-slate-500">
+  <thead className="bg-slate-50 text-sm text-slate-600">
     <tr>
       {columns.map((column) => (
         <th
@@ -150,8 +189,10 @@ const TableHead = ({ columns = [] }) => (
   </thead>
 );
 
-const TableBody = ({ children }) => (
-  <tbody className="text-sm text-slate-700">{children}</tbody>
+const TableBody = ({ children, columns = [] }) => (
+  <tbody className="text-sm text-slate-700">
+    {React.Children.map(children, (row) => withRowLabels(row, columns))}
+  </tbody>
 );
 
 const TableRow = ({ className = "", ...rest }) => (

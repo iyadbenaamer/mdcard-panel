@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 
+import CustomInput from "components/CustomInput";
 import SubmitBtn from "components/SubmitBtn";
+import Alert from "components/Alert";
 
 import axiosClient from "utils/AxiosClient";
 import { getApiErrorMessage } from "utils/errorMessages";
@@ -12,11 +14,17 @@ import HidePasswordIcon from "assets/icons/hide.svg?react";
 
 const Form = () => {
   const [data, setData] = useState({ username: "", password: "" });
+  const [touched, setTouched] = useState({ username: false, password: false });
   const [message, setMessage] = useState("");
   const dispatch = useDispatch();
   const submitButton = useRef(null);
   const [passwordInputType, setPasswordInputType] = useState("password");
-  const [inputError, setInputError] = useState({ username: "", password: "" });
+
+  const errors = {
+    username: touched.username && !data.username ? "مطلوب" : "",
+    password: touched.password && !data.password ? "مطلوب" : "",
+  };
+
   const handleEnterSubmit = (e) => {
     if (e.key === "Enter") {
       submitButton.current.click();
@@ -24,6 +32,9 @@ const Form = () => {
   };
 
   const submit = async () => {
+    setTouched({ username: true, password: true });
+    if (!data.username || !data.password) return;
+
     await axiosClient
       .post(`/login`, data)
       .then((response) => {
@@ -41,91 +52,70 @@ const Form = () => {
   };
 
   return (
-    <section className="flex flex-col gap-4 w-fit center">
+    <section className="flex flex-col gap-4 w-full max-w-md center">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="col-span-1">
-          <label htmlFor="username" className="text-sm font-semibold m-2 block">
-            اسم المستخدم
-          </label>
-          <input
-            style={{
-              border: "2px solid transparent",
-              borderRadius: "8px",
-              boxShadow: "0px 1px 3px 0px #00000026",
-            }}
-            className="flex p-1"
-            type="text"
-            name="username"
-            autoFocus
-            value={data.username}
-            onChange={(e) => {
-              if (e.target.value) {
-                e.target.style.border = "2px solid transparent";
-                setInputError({ ...inputError, username: "" });
-              } else {
-                e.target.style.border = "2px solid red";
-                setInputError({ ...inputError, username: "مطلوب" });
-              }
-              setData({ ...data, username: e.target.value });
-            }}
-            onKeyDown={handleEnterSubmit}
-          />
-          <div className="text-[red] text-xs h-3 p-1">
-            {inputError.username}
-          </div>
-        </div>
-        <div className="col-span-1">
-          <label htmlFor="password" className="text-sm font-semibold m-2 block">
-            كلمة المرور
-          </label>
-          <div className="relative w-full">
-            <input
-              style={{
-                border: "2px solid transparent",
-                borderRadius: "8px",
-                boxShadow: "0px 1px 3px 0px #00000026",
-              }}
-              className={`pe-7 p-1`}
-              autoComplete="false"
-              type={passwordInputType}
-              name="password"
-              value={data.password}
-              onChange={(e) => {
-                if (e.target.value) {
-                  e.target.style.border = "2px solid transparent";
-                  setInputError({ ...inputError, password: "" });
-                } else {
-                  e.target.style.border = "2px solid red";
-                  setInputError({ ...inputError, password: "مطلوب" });
+        <CustomInput
+          label="اسم المستخدم"
+          name="username"
+          autoFocus
+          value={data.username}
+          onChange={(e) => {
+            setData({ ...data, username: e.target.value });
+          }}
+          onBlur={() => setTouched((prev) => ({ ...prev, username: true }))}
+          onKeyDown={handleEnterSubmit}
+          aria-invalid={Boolean(errors.username)}
+          aria-describedby="username-error"
+        />
+        <div>
+          <label className="cool-input cool-input--md">
+            <span className="cool-input__label">كلمة المرور</span>
+            <span className="cool-input__shell relative block">
+              <input
+                className="custom-input pe-8"
+                autoComplete="off"
+                type={passwordInputType}
+                name="password"
+                value={data.password}
+                onChange={(e) => {
+                  setData({ ...data, password: e.target.value });
+                }}
+                onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
+                onKeyDown={handleEnterSubmit}
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby="password-error"
+              />
+              <button
+                type="button"
+                className="absolute w-5 left-2 top-1/2 -translate-y-1/2 text-primary"
+                aria-label={
+                  passwordInputType === "password"
+                    ? "إظهار كلمة المرور"
+                    : "إخفاء كلمة المرور"
                 }
-                setData({ ...data, password: e.target.value });
-              }}
-              onKeyDown={handleEnterSubmit}
-            />
-            <button
-              className="absolute w-5 left-1.25 top-2"
-              onClick={() =>
-                setPasswordInputType(
-                  passwordInputType === "password" ? "text" : "password",
-                )
-              }
-            >
-              {passwordInputType === "password" ? (
-                <ShowPasswordIcon />
-              ) : (
-                "text" && <HidePasswordIcon />
-              )}
-            </button>
-          </div>
-          <div className="text-[red] text-xs h-3 p-1">
-            {inputError.password}
-          </div>
+                onClick={() =>
+                  setPasswordInputType(
+                    passwordInputType === "password" ? "text" : "password",
+                  )
+                }
+              >
+                {passwordInputType === "password" ? (
+                  <ShowPasswordIcon />
+                ) : (
+                  <HidePasswordIcon />
+                )}
+              </button>
+            </span>
+          </label>
         </div>
       </div>
-      {message && <div className="text-[red]">{message}</div>}
-      <div className="self-center ">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 -mt-2 text-xs text-rose-700">
+        <div id="username-error">{errors.username}</div>
+        <div id="password-error">{errors.password}</div>
+      </div>
+      <Alert tone="error">{message}</Alert>
+      <div className="self-center">
         <SubmitBtn
-          disabled={!data.username || !data.password}
           ref={submitButton}
           onClick={async () => {
             await submit();
