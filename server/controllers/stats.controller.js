@@ -1,10 +1,13 @@
 import Card from "../models/card.model.js";
-import CardTier from "../models/cardTier.model.js";
 import CardType from "../models/cardType.model.js";
 import Transaction from "../models/transaction.model.js";
 import User from "../models/user.model.js";
+import Stats, { SOLD_CARDS_COUNT_KEY } from "../models/stats.model.js";
+import CardSaleStat from "../models/cardSaleStat.model.js";
 
 import { handleError } from "../utils/errorHandler.js";
+
+const TOP_SOLD_CARDS_LIMIT = 10;
 
 export const getStats = async (req, res) => {
   try {
@@ -17,17 +20,18 @@ export const getStats = async (req, res) => {
       newUsersLast7Days,
       totalCards,
       availableCards,
-      soldCards,
+      soldCardsCounter,
       totalCardTypes,
       activeCardTypes,
       purchasesLast7Days,
       refundsLast7Days,
+      topSoldCardStats,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
       Card.countDocuments(),
       Card.countDocuments({ soldTo: null }),
-      Card.countDocuments({ soldTo: { $ne: null } }),
+      Stats.findOne({ key: SOLD_CARDS_COUNT_KEY }).select("value"),
       CardType.countDocuments(),
       CardType.countDocuments({ isActive: true }),
       Transaction.countDocuments({
@@ -38,42 +42,32 @@ export const getStats = async (req, res) => {
         type: "refund",
         createdAt: { $gte: sevenDaysAgo },
       }),
+      // These counters (unlike Card.countDocuments above) are never eroded
+      // by the auto-delete purge of sold cards, since they are incremented
+      // once at the moment of sale rather than derived from live Card rows.
+      CardSaleStat.find()
+        .sort({ soldCount: -1 })
+        .limit(TOP_SOLD_CARDS_LIMIT)
+        .populate({ path: "typeId", select: "name" }),
     ]);
 
-    const topSoldTypeAgg = await Card.aggregate([
-      { $match: { soldTo: { $ne: null }, tierId: { $ne: null } } },
-      { $group: { _id: "$tierId", soldCount: { $sum: 1 } } },
-      { $sort: { soldCount: -1 } },
-      { $limit: 1 },
-      {
-        $lookup: {
-          from: CardTier.collection.name,
-          localField: "_id",
-          foreignField: "_id",
-          as: "tier",
-        },
-      },
-      { $unwind: "$tier" },
-      {
-        $lookup: {
-          from: CardType.collection.name,
-          localField: "tier.typeId",
-          foreignField: "_id",
-          as: "type",
-        },
-      },
-      { $unwind: "$type" },
-      {
-        $project: {
-          _id: 0,
-          typeId: "$type._id",
-          name: "$type.name",
-          soldCount: 1,
-        },
-      },
-    ]);
+    const soldCards = soldCardsCounter?.value || 0;
 
-    const topSoldType = topSoldTypeAgg?.[0] || null;
+    const topSoldCards = topSoldCardStats
+      .filter((stat) => stat.typeId)
+      .map((stat) => ({
+        typeId: stat.typeId._id,
+        typeName: stat.typeId.name,
+        soldCount: stat.soldCount,
+      }));
+
+    const topSoldType = topSoldCards[0]
+      ? {
+          typeId: topSoldCards[0].typeId,
+          name: topSoldCards[0].typeName,
+          soldCount: topSoldCards[0].soldCount,
+        }
+      : null;
 
     const [purchaseTotals, refundTotals] = await Promise.all([
       Transaction.aggregate([
@@ -101,6 +95,7 @@ export const getStats = async (req, res) => {
         totalCardTypes,
         activeCardTypes,
         topSoldType,
+        topSoldCards,
         totalRevenue,
         totalRefunds,
         netRevenue,

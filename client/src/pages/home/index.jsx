@@ -2,12 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 import Layout from "layout";
+import Badge from "components/Badge";
+import Alert from "components/Alert";
 import axiosClient from "utils/AxiosClient";
+
+const getDisplayName = (name) => name?.ar || name?.en || "";
 
 const Home = () => {
   const admin = useSelector((state) => state.admin);
   const [statsResponse, setStatsResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [reloadFlag, setReloadFlag] = useState(0);
   const adminName =
     admin?.username || localStorage.getItem("adminName") || "المدير";
 
@@ -15,6 +21,8 @@ const Home = () => {
     let isMounted = true;
 
     const loadStats = async () => {
+      setIsLoading(true);
+      setHasError(false);
       try {
         const response = await axiosClient.get("/admin/stats");
         if (isMounted) {
@@ -23,6 +31,7 @@ const Home = () => {
       } catch (error) {
         if (isMounted) {
           setStatsResponse(null);
+          setHasError(true);
         }
       } finally {
         if (isMounted) {
@@ -36,7 +45,7 @@ const Home = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadFlag]);
 
   const stats = statsResponse?.stats || null;
   const serverTime = statsResponse?.serverTime || null;
@@ -50,6 +59,8 @@ const Home = () => {
     if (!total || typeof part !== "number") return 0;
     return Math.round((part / total) * 100);
   };
+
+  const topSoldCards = stats?.topSoldCards || [];
 
   const availablePercent = percentOfTotal(
     stats?.availableCards,
@@ -150,7 +161,7 @@ const Home = () => {
       },
       {
         title: "النوع الأكثر مبيعا",
-        value: stats?.topSoldType?.name || "—",
+        value: getDisplayName(stats?.topSoldType?.name) || "—",
         badge: formatNumber(stats?.topSoldType?.soldCount),
         note: "بطاقات مباعة",
         tone: "rose",
@@ -209,12 +220,12 @@ const Home = () => {
     ],
   );
 
-  const badgeToneClasses = {
-    sky: "bg-sky-100 text-sky-700",
-    emerald: "bg-emerald-100 text-emerald-700",
-    amber: "bg-amber-100 text-amber-700",
-    violet: "bg-violet-100 text-violet-700",
-    rose: "bg-rose-100 text-rose-700",
+  const badgeTones = {
+    sky: "info",
+    emerald: "success",
+    amber: "warning",
+    violet: "violet",
+    rose: "danger",
   };
 
   const formattedServerTime = serverTime
@@ -237,7 +248,7 @@ const Home = () => {
           <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.08)] backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-600">
                   لوحة التحكم
                 </p>
                 <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
@@ -250,6 +261,21 @@ const Home = () => {
             </div>
           </header>
 
+          {hasError && (
+            <Alert tone="error" className="mt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>تعذر تحميل بيانات لوحة التحكم. تحقق من الاتصال وحاول مرة أخرى.</span>
+                <button
+                  type="button"
+                  onClick={() => setReloadFlag((flag) => flag + 1)}
+                  className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                >
+                  إعادة المحاولة
+                </button>
+              </div>
+            </Alert>
+          )}
+
           <div className="mt-8 grid gap-6 lg:grid-cols-[2fr_1fr]">
             <div className="grid gap-6 sm:grid-cols-2">
               {statCards.map((item) => (
@@ -259,7 +285,7 @@ const Home = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500">
+                      <p className="text-sm font-semibold text-slate-600">
                         {item.title}
                       </p>
                       <h3 className="mt-2 text-2xl font-bold text-slate-900">
@@ -271,14 +297,10 @@ const Home = () => {
                     </div>
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-sm">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                        badgeToneClasses[item.tone] || badgeToneClasses.sky
-                      }`}
-                    >
+                    <Badge tone={badgeTones[item.tone] || "info"}>
                       {item.badge}
-                    </span>
-                    <span className="text-slate-500">{item.note}</span>
+                    </Badge>
+                    <span className="text-slate-600">{item.note}</span>
                   </div>
                 </article>
               ))}
@@ -307,6 +329,59 @@ const Home = () => {
                 </div>
               </div>
             </aside>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  أفضل 10 بطاقات مبيعا
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  الترتيب حسب إجمالي عدد البطاقات المباعة منذ البداية
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              {isLoading ? (
+                <p className="py-6 text-center text-sm text-slate-600">
+                  جارٍ تحميل البيانات...
+                </p>
+              ) : topSoldCards.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-600">
+                  لا توجد بيانات مبيعات بعد
+                </p>
+              ) : (
+                <table className="w-full min-w-[360px] text-right text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-600">
+                      <th className="py-2 pr-2 font-semibold">#</th>
+                      <th className="py-2 font-semibold">النوع</th>
+                      <th className="py-2 pl-2 font-semibold">عدد المبيعات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topSoldCards.map((card, index) => (
+                      <tr
+                        key={card.typeId}
+                        className="border-b border-slate-100 last:border-0"
+                      >
+                        <td className="py-3 pr-2 font-semibold text-slate-600">
+                          {index + 1}
+                        </td>
+                        <td className="py-3 font-medium text-slate-900">
+                          {getDisplayName(card.typeName)}
+                        </td>
+                        <td className="py-3 pl-2 font-semibold text-slate-900">
+                          {formatNumber(card.soldCount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       </section>

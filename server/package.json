@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "seed": "node utils/seed.js"
+    "seed": "node utils/seed.js",
+    "backfill-stats": "node utils/backfillStats.js",
+    "dedupe-card-sale-stats": "node utils/dedupeCardSaleStats.js"
   },
   "author": "Iyad Benaamer",
   "license": "ISC",

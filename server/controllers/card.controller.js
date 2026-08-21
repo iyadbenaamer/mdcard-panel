@@ -13,6 +13,7 @@ import parsePagination from "../utils/parsePagination.js";
 import crypto from "crypto";
 import { decryptCardCode, encryptCardCode } from "../utils/cardCodeCrypto.js";
 import generateRandomSerialNumber from "../utils/generateRandomSerialNumber.js";
+import { recordCardSale } from "../utils/statsTracker.js";
 
 const isValidSerialNumber = (value) => /^\d{15}$/.test(value);
 
@@ -398,6 +399,7 @@ export const updateOne = async (req, res) => {
     if (!card) {
       return res.status(404).json({ code: "CARD_NOT_FOUND" });
     }
+    const wasSold = Boolean(card.soldTo);
 
     const resolveTargetTier = async () => {
       const targetTierId = tierId ?? card.tierId;
@@ -503,6 +505,27 @@ export const updateOne = async (req, res) => {
     }
 
     await card.save();
+
+    // Best-effort: keep the persistent sold-cards stats counters in sync
+    // when an admin marks a card sold/unsold by hand, since these counters
+    // (not a live count of Card documents) drive the admin dashboard.
+    const isSold = Boolean(card.soldTo);
+    if (wasSold !== isSold) {
+      try {
+        const targetTier = await CardTier.findById(card.tierId).select(
+          "typeId",
+        );
+        if (targetTier) {
+          await recordCardSale({
+            typeId: targetTier.typeId,
+            delta: isSold ? 1 : -1,
+          });
+        }
+      } catch (statsError) {
+        console.error("Failed to record card sale stats:", statsError);
+      }
+    }
+
     return res.status(200).json(withDecryptedCode(card));
   } catch (err) {
     return handleError(err, res);
@@ -596,6 +619,18 @@ export const createOne = async (req, res) => {
 
       try {
         await card.save();
+
+        if (soldTo) {
+          try {
+            await recordCardSale({
+              typeId: tierExists.typeId,
+              delta: 1,
+            });
+          } catch (statsError) {
+            console.error("Failed to record card sale stats:", statsError);
+          }
+        }
+
         return res.status(201).json(withDecryptedCode(card));
       } catch (err) {
         if (err?.code === 11000 && shouldAutoGenerateSerial) {
